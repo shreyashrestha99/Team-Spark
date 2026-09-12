@@ -39,8 +39,21 @@ public class RoomEntity {
     @Column(name = "floor")
     private Integer floor;
 
-    @Column(name = "building", length = 100)
-    private String building;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "building_id")
+    private BuildingEntity building;
+
+    // Seat grid. Rows are derived from capacity and seats per row when the room is saved.
+    @Column(name = "seat_rows")
+    private Integer seatRows;
+
+    @Column(name = "seats_per_row")
+    private Integer seatsPerRow;
+
+    /** Share of the seat grid usable under exam spacing, e.g. 0.5 keeps every other column free. */
+    @Builder.Default
+    @Column(name = "exam_capacity_factor", nullable = false)
+    private Double examCapacityFactor = 0.5;
 
     @Builder.Default
     @Column(name = "has_projector", nullable = false)

@@ -18,7 +18,18 @@ public class RoomResponseDto {
     private String roomType;
     private Integer capacity;
     private Integer floor;
-    private String building;
+
+    private UUID buildingId;
+    private String buildingName;
+    private String buildingCode;
+
+    // Seat grid. Rows are derived, never typed by the admin.
+    private Integer seatRows;
+    private Integer seatsPerRow;
+    private Double examCapacityFactor;
+
+    /** Seats usable once exam spacing is applied, the number venue allocation actually uses. */
+    private Integer examCapacity;
 
     private Boolean hasProjector;
     private Boolean hasComputers;

@@ -37,6 +37,32 @@ function slot(row: CrudRow) {
   return `${hhmm(row.startTime)} – ${hhmm(row.endTime)}`
 }
 
+// "6 x 10" seat grid, or a dash when the room has no grid yet
+function seatGrid(row: CrudRow) {
+  if (!row.seatRows || !row.seatsPerRow) return '—'
+  return `${row.seatRows} x ${row.seatsPerRow}`
+}
+
+// Compact "1L / 1T / 1W" summary of a weekly delivery pattern
+function deliveryPattern(row: CrudRow) {
+  const parts = [
+    `${row.lectureSessionsPerWeek ?? 0}L`,
+    `${row.tutorialSessionsPerWeek ?? 0}T`,
+    `${row.workshopSessionsPerWeek ?? 0}W`,
+  ]
+  return parts.join(' / ')
+}
+
+// Amber for a hard block, blue for a soft preference
+function availabilityBadge(type?: string) {
+  if (!type) return '—'
+  const upper = type.toUpperCase()
+  const tone = upper === 'UNAVAILABLE'
+    ? 'bg-[#FEF3C7] text-[#B45309]'
+    : 'bg-[#EFF6FF] text-[#2563EB]'
+  return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${tone}`}>{upper}</span>
+}
+
 const STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'SCHEDULED' },
   { value: 'COMPLETED', label: 'COMPLETED' },
@@ -81,9 +107,11 @@ export const BATCHES: ResourceConfig = {
   columns: [
     { key: 'batchName', label: 'Batch Name', className: 'text-[#1E293B] font-medium' },
     { key: 'programmeName', label: 'Programme' },
+    { key: 'intakeYear', label: 'Intake' },
     { key: 'yearOfStudy', label: 'Year' },
     { key: 'semester', label: 'Sem' },
     { key: 'studentCount', label: 'Students' },
+    { key: 'groupCount', label: 'Groups' },
     { key: 'isActive', label: 'Status', render: (r) => flagBadge(r.isActive, 'Active', 'Inactive') },
   ],
   fields: [
@@ -91,7 +119,18 @@ export const BATCHES: ResourceConfig = {
       name: 'programmeId', label: 'Programme', type: 'select', required: true,
       optionsEndpoint: '/admin/programmes/active', optionValue: 'programmeId', optionLabel: 'programmeName',
     },
-    { name: 'batchName', label: 'Batch Name', type: 'text', required: true, maxLength: 100, placeholder: 'e.g. Computing 2022 (L5)' },
+    { name: 'batchName', label: 'Batch Name', type: 'text', required: true, maxLength: 100, placeholder: 'e.g. Computing 2025 (L4)' },
+    {
+      name: 'intakeYear', label: 'Intake Year', type: 'number', min: 2000, max: 2100, half: true,
+      placeholder: 'e.g. 2025', helpText: 'The year this cohort started.',
+    },
+    {
+      name: 'shift', label: 'Shift', type: 'select', half: true,
+      options: [
+        { value: 'MORNING', label: 'MORNING' },
+        { value: 'DAY', label: 'DAY' },
+      ],
+    },
     { name: 'yearOfStudy', label: 'Year of Study', type: 'number', required: true, min: 1, max: 10, half: true },
     { name: 'semester', label: 'Semester', type: 'number', required: true, min: 1, max: 12, half: true },
     { name: 'startDate', label: 'Start Date', type: 'date', half: true },
@@ -141,7 +180,9 @@ export const ROOMS: ResourceConfig = {
     { key: 'roomName', label: 'Room Name', className: 'text-[#1E293B] font-medium' },
     { key: 'roomType', label: 'Type' },
     { key: 'capacity', label: 'Capacity' },
-    { key: 'building', label: 'Building' },
+    { key: 'grid', label: 'Seat Grid', render: seatGrid, mono: true },
+    { key: 'examCapacity', label: 'Exam Seats' },
+    { key: 'buildingName', label: 'Building' },
     { key: 'isAvailable', label: 'Status', render: (r) => flagBadge(r.isAvailable, 'Available', 'Unavailable') },
   ],
   fields: [
@@ -157,8 +198,19 @@ export const ROOMS: ResourceConfig = {
       ],
     },
     { name: 'capacity', label: 'Capacity', type: 'number', required: true, min: 1, max: 1000, half: true },
+    {
+      name: 'seatsPerRow', label: 'Seats per Row', type: 'number', min: 1, max: 50, half: true,
+      helpText: 'Rows and seat names are worked out from this. Nobody types a seat name.',
+    },
+    {
+      name: 'examCapacityFactor', label: 'Exam Spacing', type: 'number', min: 0.1, max: 1, half: true,
+      placeholder: '0.5', helpText: '0.5 keeps every other seat free during exams.',
+    },
     { name: 'floor', label: 'Floor', type: 'number', min: 0, max: 100, half: true },
-    { name: 'building', label: 'Building', type: 'text', maxLength: 100, half: true, placeholder: 'e.g. Main Block' },
+    {
+      name: 'buildingId', label: 'Building', type: 'select', half: true,
+      optionsEndpoint: '/admin/buildings/active', optionValue: 'buildingId', optionLabel: 'buildingName',
+    },
     { name: 'hasProjector', label: 'Has Projector', type: 'checkbox', defaultChecked: false, half: true },
     { name: 'hasComputers', label: 'Has Computers', type: 'checkbox', defaultChecked: false, half: true },
     { name: 'hasAc', label: 'Has AC', type: 'checkbox', defaultChecked: false, half: true },
@@ -180,17 +232,40 @@ export const BATCH_MODULES: ResourceConfig = {
     { key: 'batchName', label: 'Batch', className: 'text-[#1E293B] font-medium' },
     { key: 'moduleCode', label: 'Module Code', mono: true, className: 'text-[#2563EB]' },
     { key: 'moduleName', label: 'Module Name' },
-    { key: 'credits', label: 'Credits' },
+    { key: 'teacherName', label: 'Lecturer' },
+    { key: 'pattern', label: 'Weekly Pattern', render: deliveryPattern, mono: true },
+    { key: 'weeklyContactHours', label: 'Contact hrs' },
+    { key: 'weeklySessionCount', label: 'Sessions/wk' },
   ],
   fields: [
     {
-      name: 'batchId', label: 'Batch', type: 'select', required: true,
+      name: 'batchId', label: 'Batch', type: 'select', required: true, half: true,
       optionsEndpoint: '/admin/batches/active', optionValue: 'batchId', optionLabel: 'label',
     },
     {
-      name: 'moduleId', label: 'Module', type: 'select', required: true,
+      name: 'moduleId', label: 'Module', type: 'select', required: true, half: true,
       optionsEndpoint: '/admin/modules/active', optionValue: 'moduleId', optionLabel: 'label',
     },
+    {
+      name: 'teacherId', label: 'Lecturer', type: 'select',
+      optionsEndpoint: '/admin/users', optionsParams: { role: 'ROLE_TEACHER' },
+      optionValue: 'teacherId', optionLabel: 'fullName',
+      helpText: 'Leave empty and the generator picks the lightest loaded lecturer.',
+    },
+    {
+      name: 'lectureSessionsPerWeek', label: 'Lectures / week', type: 'number', min: 0, max: 10, half: true,
+      helpText: 'The whole cohort attends a lecture together.',
+    },
+    { name: 'lectureDurationMinutes', label: 'Lecture minutes', type: 'number', min: 30, max: 480, half: true },
+    { name: 'tutorialSessionsPerWeek', label: 'Tutorials / week', type: 'number', min: 0, max: 10, half: true },
+    { name: 'tutorialDurationMinutes', label: 'Tutorial minutes', type: 'number', min: 30, max: 480, half: true },
+    {
+      name: 'workshopSessionsPerWeek', label: 'Workshops / week', type: 'number', min: 0, max: 10, half: true,
+      helpText: 'Workshops are only ever placed in rooms with computers.',
+    },
+    { name: 'workshopDurationMinutes', label: 'Workshop minutes', type: 'number', min: 30, max: 480, half: true },
+    { name: 'splitTutorialByGroup', label: 'Split tutorials by group', type: 'checkbox', defaultChecked: true, half: true },
+    { name: 'splitWorkshopByGroup', label: 'Split workshops by group', type: 'checkbox', defaultChecked: true, half: true },
   ],
 }
 
@@ -209,7 +284,9 @@ export const TIMETABLE_SESSIONS: ResourceConfig = {
     { key: 'sessionDate', label: 'Date', className: 'text-[#1E293B] font-medium' },
     { key: 'slot', label: 'Time', render: slot, mono: true },
     { key: 'batchName', label: 'Batch' },
+    { key: 'groupName', label: 'Group', render: (r) => r.groupName ?? 'Whole batch' },
     { key: 'moduleCode', label: 'Module', mono: true, className: 'text-[#2563EB]' },
+    { key: 'sessionType', label: 'Type' },
     { key: 'teacherName', label: 'Lecturer' },
     { key: 'roomCode', label: 'Room', mono: true },
     { key: 'status', label: 'Status', render: (r) => statusBadge(r.status) },
@@ -231,6 +308,12 @@ export const TIMETABLE_SESSIONS: ResourceConfig = {
     {
       name: 'roomId', label: 'Room', type: 'select', required: true, half: true,
       optionsEndpoint: '/admin/rooms/available', optionValue: 'roomId', optionLabel: 'label',
+    },
+    {
+      name: 'groupId', label: 'Group', type: 'select', half: true,
+      optionsEndpoint: '/admin/student-groups', optionValue: 'groupId',
+      optionLabel: (r) => `${r.batchName ?? ''} — ${r.groupName ?? ''}`,
+      helpText: 'Leave empty for a lecture the whole batch attends.',
     },
     { name: 'sessionDate', label: 'Session Date', type: 'date', required: true },
     { name: 'startTime', label: 'Start Time', type: 'time', required: true, half: true },
@@ -417,10 +500,169 @@ export const SEAT_ALLOCATIONS: ResourceConfig = {
   ],
 }
 
+export const BUILDINGS: ResourceConfig = {
+  key: 'BUILDINGS',
+  title: 'Buildings',
+  singular: 'Building',
+  description: 'Campus blocks. Rooms belong to one, so exams can be kept inside a single block.',
+  endpoint: '/admin/buildings',
+  sortable: ['buildingCode', 'buildingName'],
+  defaultSortBy: 'buildingCode',
+  defaultSortDir: 'asc',
+  columns: [
+    { key: 'buildingCode', label: 'Code', mono: true, className: 'text-[#2563EB]' },
+    { key: 'buildingName', label: 'Building Name', className: 'text-[#1E293B] font-medium' },
+    { key: 'floors', label: 'Floors' },
+    { key: 'roomCount', label: 'Rooms' },
+    { key: 'totalCapacity', label: 'Total Seats' },
+    { key: 'isActive', label: 'Status', render: (r) => flagBadge(r.isActive, 'Active', 'Inactive') },
+  ],
+  fields: [
+    { name: 'buildingName', label: 'Building Name', type: 'text', required: true, maxLength: 100, placeholder: 'e.g. Himal Block' },
+    { name: 'buildingCode', label: 'Building Code', type: 'text', required: true, maxLength: 20, half: true, placeholder: 'e.g. HML' },
+    { name: 'floors', label: 'Floors', type: 'number', min: 1, max: 100, half: true },
+    { name: 'isActive', label: 'Active', type: 'checkbox', defaultChecked: true },
+  ],
+}
+
+export const STUDENT_GROUPS: ResourceConfig = {
+  key: 'STUDENT_GROUPS',
+  title: 'Student Groups',
+  singular: 'Group',
+  description: 'Tutorial and workshop groups inside a batch. Lectures use the whole cohort.',
+  endpoint: '/admin/student-groups',
+  searchable: false,
+  sortable: ['groupName'],
+  defaultSortBy: 'groupName',
+  defaultSortDir: 'asc',
+  columns: [
+    { key: 'batchName', label: 'Batch', className: 'text-[#1E293B] font-medium' },
+    { key: 'groupName', label: 'Group', mono: true, className: 'text-[#2563EB]' },
+    { key: 'studentCount', label: 'Students' },
+  ],
+  fields: [
+    {
+      name: 'batchId', label: 'Batch', type: 'select', required: true,
+      optionsEndpoint: '/admin/batches/active', optionValue: 'batchId', optionLabel: 'label',
+    },
+    { name: 'groupName', label: 'Group Name', type: 'text', required: true, maxLength: 50, placeholder: 'e.g. Group A' },
+  ],
+}
+
+export const TIME_SLOTS: ResourceConfig = {
+  key: 'TIME_SLOTS',
+  title: 'Time Slots',
+  singular: 'Time Slot',
+  description: 'The weekly grid the generator schedules into. Non-teaching slots stay free.',
+  endpoint: '/admin/time-slots',
+  searchable: false,
+  sortable: ['periodNumber'],
+  defaultSortBy: 'periodNumber',
+  defaultSortDir: 'asc',
+  pageSize: 20,
+  columns: [
+    { key: 'dayOfWeek', label: 'Day', className: 'text-[#1E293B] font-medium' },
+    { key: 'periodNumber', label: 'Period' },
+    { key: 'slot', label: 'Time', render: slot, mono: true },
+    { key: 'durationMinutes', label: 'Minutes' },
+    { key: 'isTeachingSlot', label: 'Usable', render: (r) => flagBadge(r.isTeachingSlot, 'Teaching', 'Break') },
+  ],
+  fields: [
+    {
+      name: 'dayOfWeek', label: 'Day', type: 'select', required: true, half: true,
+      options: [
+        { value: 'SUNDAY', label: 'SUNDAY' },
+        { value: 'MONDAY', label: 'MONDAY' },
+        { value: 'TUESDAY', label: 'TUESDAY' },
+        { value: 'WEDNESDAY', label: 'WEDNESDAY' },
+        { value: 'THURSDAY', label: 'THURSDAY' },
+        { value: 'FRIDAY', label: 'FRIDAY' },
+        { value: 'SATURDAY', label: 'SATURDAY' },
+      ],
+    },
+    { name: 'periodNumber', label: 'Period Number', type: 'number', required: true, min: 1, max: 20, half: true },
+    { name: 'startTime', label: 'Start Time', type: 'time', required: true, half: true },
+    { name: 'endTime', label: 'End Time', type: 'time', required: true, half: true },
+    {
+      name: 'isTeachingSlot', label: 'Available for teaching', type: 'checkbox', defaultChecked: true,
+      helpText: 'Uncheck for lunch and breaks. The generator never schedules into these.',
+    },
+  ],
+}
+
+export const HOLIDAYS: ResourceConfig = {
+  key: 'HOLIDAYS',
+  title: 'Holidays',
+  singular: 'Holiday',
+  description: 'Dates skipped when a weekly routine is stamped across the semester.',
+  endpoint: '/admin/holidays',
+  searchable: false,
+  sortable: ['holidayDate'],
+  defaultSortBy: 'holidayDate',
+  defaultSortDir: 'asc',
+  columns: [
+    { key: 'holidayDate', label: 'Date', className: 'text-[#1E293B] font-medium' },
+    { key: 'holidayName', label: 'Holiday' },
+  ],
+  fields: [
+    { name: 'holidayDate', label: 'Date', type: 'date', required: true },
+    { name: 'holidayName', label: 'Holiday Name', type: 'text', required: true, maxLength: 150, placeholder: 'e.g. Vijaya Dashami' },
+  ],
+}
+
+export const TEACHER_AVAILABILITY: ResourceConfig = {
+  key: 'TEACHER_AVAILABILITY',
+  title: 'Lecturer Availability',
+  singular: 'Availability',
+  description: 'Windows a lecturer cannot teach, or would rather teach. Unavailable is enforced.',
+  endpoint: '/admin/teacher-availability',
+  searchable: false,
+  defaultSortBy: 'createdAt',
+  defaultSortDir: 'desc',
+  columns: [
+    { key: 'teacherName', label: 'Lecturer', className: 'text-[#1E293B] font-medium' },
+    { key: 'dayOfWeek', label: 'Day' },
+    { key: 'slot', label: 'Window', render: slot, mono: true },
+    { key: 'availabilityType', label: 'Type', render: (r) => availabilityBadge(r.availabilityType) },
+    { key: 'note', label: 'Note' },
+  ],
+  fields: [
+    {
+      name: 'teacherId', label: 'Lecturer', type: 'select', required: true,
+      optionsEndpoint: '/admin/users', optionsParams: { role: 'ROLE_TEACHER' },
+      optionValue: 'teacherId', optionLabel: 'fullName',
+    },
+    {
+      name: 'dayOfWeek', label: 'Day', type: 'select', required: true, half: true,
+      options: [
+        { value: 'SUNDAY', label: 'SUNDAY' },
+        { value: 'MONDAY', label: 'MONDAY' },
+        { value: 'TUESDAY', label: 'TUESDAY' },
+        { value: 'WEDNESDAY', label: 'WEDNESDAY' },
+        { value: 'THURSDAY', label: 'THURSDAY' },
+        { value: 'FRIDAY', label: 'FRIDAY' },
+        { value: 'SATURDAY', label: 'SATURDAY' },
+      ],
+    },
+    {
+      name: 'availabilityType', label: 'Type', type: 'select', half: true,
+      options: [
+        { value: 'UNAVAILABLE', label: 'UNAVAILABLE' },
+        { value: 'PREFERRED', label: 'PREFERRED' },
+      ],
+      helpText: 'Unavailable blocks the slot. Preferred only nudges the score.',
+    },
+    { name: 'startTime', label: 'Start Time', type: 'time', required: true, half: true },
+    { name: 'endTime', label: 'End Time', type: 'time', required: true, half: true },
+    { name: 'note', label: 'Note', type: 'text', maxLength: 255, placeholder: 'e.g. Research day' },
+  ],
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export type ResourceKey =
   | 'PROGRAMMES' | 'BATCHES' | 'MODULES' | 'ROOMS' | 'BATCH_MODULES'
+  | 'BUILDINGS' | 'STUDENT_GROUPS' | 'TIME_SLOTS' | 'HOLIDAYS' | 'TEACHER_AVAILABILITY'
   | 'TIMETABLE_SESSIONS' | 'EXAMS' | 'EXAM_ROOMS' | 'INVIGILATORS' | 'SEAT_ALLOCATIONS'
 
 // Config plus the primary key used for update and delete
@@ -430,6 +672,11 @@ export const RESOURCES: Record<ResourceKey, { config: ResourceConfig; idField: s
   MODULES: { config: MODULES, idField: 'moduleId' },
   ROOMS: { config: ROOMS, idField: 'roomId' },
   BATCH_MODULES: { config: BATCH_MODULES, idField: 'batchModuleId' },
+  BUILDINGS: { config: BUILDINGS, idField: 'buildingId' },
+  STUDENT_GROUPS: { config: STUDENT_GROUPS, idField: 'groupId' },
+  TIME_SLOTS: { config: TIME_SLOTS, idField: 'slotId' },
+  HOLIDAYS: { config: HOLIDAYS, idField: 'holidayId' },
+  TEACHER_AVAILABILITY: { config: TEACHER_AVAILABILITY, idField: 'availabilityId' },
   TIMETABLE_SESSIONS: { config: TIMETABLE_SESSIONS, idField: 'sessionId' },
   EXAMS: { config: EXAMS, idField: 'examId' },
   EXAM_ROOMS: { config: EXAM_ROOMS, idField: 'examRoomId' },

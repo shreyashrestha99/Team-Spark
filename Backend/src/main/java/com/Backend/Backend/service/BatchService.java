@@ -39,6 +39,8 @@ public class BatchService {
         BatchEntity batch = BatchEntity.builder()
                 .programme(findProgrammeOrThrow(request.getProgrammeId()))
                 .batchName(name)
+                .intakeYear(request.getIntakeYear())
+                .shift(trimOrNull(request.getShift()))
                 .yearOfStudy(request.getYearOfStudy())
                 .semester(request.getSemester())
                 .startDate(request.getStartDate())
@@ -97,6 +99,8 @@ public class BatchService {
 
         batch.setProgramme(findProgrammeOrThrow(request.getProgrammeId()));
         batch.setBatchName(name);
+        batch.setIntakeYear(request.getIntakeYear());
+        batch.setShift(trimOrNull(request.getShift()));
         batch.setYearOfStudy(request.getYearOfStudy());
         batch.setSemester(request.getSemester());
         batch.setStartDate(request.getStartDate());
@@ -142,6 +146,13 @@ public class BatchService {
         return value == null ? "" : value.trim();
     }
 
+    // Blank strings become null
+    private String trimOrNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     // Start date must precede end date
     private void validateDates(BatchRequestDto request) {
         if (request.getStartDate() != null
@@ -178,6 +189,8 @@ public class BatchService {
         return BatchResponseDto.builder()
                 .batchId(batch.getBatchId())
                 .batchName(batch.getBatchName())
+                .intakeYear(batch.getIntakeYear())
+                .shift(batch.getShift())
                 .yearOfStudy(batch.getYearOfStudy())
                 .semester(batch.getSemester())
                 .startDate(batch.getStartDate())
@@ -187,6 +200,7 @@ public class BatchService {
                 .programmeName(programme != null ? programme.getProgrammeName() : null)
                 .programmeCode(programme != null ? programme.getProgrammeCode() : null)
                 .studentCount(batch.getStudents() != null ? batch.getStudents().size() : 0)
+                .groupCount(batch.getStudentGroups() != null ? batch.getStudentGroups().size() : 0)
                 .label(label.toString())
                 .createdAt(batch.getCreatedAt())
                 .updatedAt(batch.getUpdatedAt())

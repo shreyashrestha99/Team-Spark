@@ -10,6 +10,8 @@ import { UsersTable } from '../components/admin/UsersTable'
 import { AddUserModal } from '../components/admin/AddUserModal'
 import { ViewUserModal } from '../components/admin/ViewUserModal'
 import { CrudSection } from '../components/admin/crud/CrudSection'
+import { RoutineGenerator } from '../components/admin/routine/RoutineGenerator'
+import { ExamSeating } from '../components/admin/seating/ExamSeating'
 import { RESOURCES, type ResourceKey } from '../components/admin/resources'
 import { isUserTab, viewLabel, type AdminView } from '../components/admin/navigation'
 import {
@@ -247,6 +249,7 @@ export default function AdminDashboard() {
   }
 
   const label = viewLabel(activeView)
+  const isSpecialView = activeView === 'ROUTINE_GENERATOR' || activeView === 'EXAM_SEATING'
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5F7FA]">
@@ -263,8 +266,14 @@ export default function AdminDashboard() {
 
       <main className="flex-1 overflow-y-auto">
         <AdminTopbar
-          title={`${label} Management`}
-          subtitle={`View and manage all ${label.toLowerCase()} records`}
+          title={isSpecialView ? label : `${label} Management`}
+          subtitle={
+            activeView === 'ROUTINE_GENERATOR'
+              ? 'Build a clash-free timetable from the delivery pattern of each module'
+              : activeView === 'EXAM_SEATING'
+                ? 'Allocate halls and seat every candidate, desk by desk'
+                : `View and manage all ${label.toLowerCase()} records`
+          }
           addLabel={userTab ? tabLabel(userTab) : undefined}
           onAddClick={userTab ? openAddModal : undefined}
         />
@@ -277,7 +286,11 @@ export default function AdminDashboard() {
             onTabChange={setActiveView}
           />
 
-          {userTab ? (
+          {activeView === 'ROUTINE_GENERATOR' ? (
+            <RoutineGenerator />
+          ) : activeView === 'EXAM_SEATING' ? (
+            <ExamSeating />
+          ) : userTab ? (
             <UsersTable
               activeTab={userTab}
               users={users}

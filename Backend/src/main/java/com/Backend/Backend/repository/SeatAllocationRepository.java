@@ -24,6 +24,25 @@ public interface SeatAllocationRepository extends JpaRepository<SeatAllocationEn
 
     List<SeatAllocationEntity> findAllByExam_ExamId(UUID examId);
 
+    void deleteAllByExam_ExamId(UUID examId);
+
+    /**
+     * Seats already claimed in one physical hall during an overlapping slot, whichever
+     * exam claimed them. Two exams may share a hall, so seat labels must be unique per
+     * room and time rather than per exam.
+     */
+    @Query("SELECT sa FROM SeatAllocationEntity sa WHERE " +
+            "sa.examRoom.room.roomId = :roomId AND " +
+            "sa.exam.examDate = :examDate AND " +
+            "sa.exam.startTime < :endTime AND sa.exam.endTime > :startTime AND " +
+            "UPPER(sa.exam.status) <> 'CANCELLED'")
+    List<SeatAllocationEntity> findSeatsTakenInRoom(
+            @Param("roomId") UUID roomId,
+            @Param("examDate") java.time.LocalDate examDate,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime
+    );
+
     // Combined list with exam, room and student filters
     @Query("SELECT sa FROM SeatAllocationEntity sa WHERE " +
             "(:examId IS NULL OR sa.exam.examId = :examId) AND " +

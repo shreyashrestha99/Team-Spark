@@ -15,6 +15,8 @@ public class BatchResponseDto {
 
     private UUID batchId;
     private String batchName;
+    private Integer intakeYear;
+    private String shift;
     private Integer yearOfStudy;
     private Integer semester;
     private LocalDate startDate;
@@ -27,6 +29,9 @@ public class BatchResponseDto {
 
     // How many students are in this batch
     private int studentCount;
+
+    // Tutorial and workshop groups this batch is split into
+    private int groupCount;
 
     /** Human-friendly label for dropdowns, e.g. "BSc (Hons) Computing — Year 2 / Sem 4". */
     private String label;

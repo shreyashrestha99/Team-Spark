@@ -7,11 +7,15 @@ import com.Backend.Backend.dto.timetable.TimetableSessionResponseDto;
 import com.Backend.Backend.entity.BatchEntity;
 import com.Backend.Backend.entity.ModuleEntity;
 import com.Backend.Backend.entity.RoomEntity;
+import com.Backend.Backend.entity.StudentGroupEntity;
 import com.Backend.Backend.entity.TeacherEntity;
+import com.Backend.Backend.entity.TimeSlotEntity;
 import com.Backend.Backend.entity.TimetableSessionEntity;
 import com.Backend.Backend.repository.BatchRepository;
 import com.Backend.Backend.repository.ModuleRepository;
 import com.Backend.Backend.repository.RoomRepository;
+import com.Backend.Backend.repository.StudentGroupRepository;
+import com.Backend.Backend.repository.StudentRepository;
 import com.Backend.Backend.repository.TeacherRepository;
 import com.Backend.Backend.repository.TimetableSessionRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +42,8 @@ public class TimetableSessionService {
     private final ModuleRepository moduleRepository;
     private final TeacherRepository teacherRepository;
     private final RoomRepository roomRepository;
+    private final StudentGroupRepository studentGroupRepository;
+    private final StudentRepository studentRepository;
 
     // Create a clash-free session
     @Transactional
@@ -50,6 +56,7 @@ public class TimetableSessionService {
                 .module(findModuleOrThrow(request.getModuleId()))
                 .teacher(findTeacherOrThrow(request.getTeacherId()))
                 .room(findRoomOrThrow(request.getRoomId()))
+                .studentGroup(findGroupOrNull(request.getGroupId()))
                 .sessionDate(request.getSessionDate())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
@@ -106,6 +113,7 @@ public class TimetableSessionService {
         session.setModule(findModuleOrThrow(request.getModuleId()));
         session.setTeacher(findTeacherOrThrow(request.getTeacherId()));
         session.setRoom(findRoomOrThrow(request.getRoomId()));
+        session.setStudentGroup(findGroupOrNull(request.getGroupId()));
         session.setSessionDate(request.getSessionDate());
         session.setStartTime(request.getStartTime());
         session.setEndTime(request.getEndTime());
@@ -155,6 +163,7 @@ public class TimetableSessionService {
                 request.getRoomId(),
                 request.getTeacherId(),
                 request.getBatchId(),
+                request.getGroupId(),
                 excludeId
         );
 
@@ -178,11 +187,10 @@ public class TimetableSessionService {
                         .build());
             }
 
-            if (clash.getBatch().getBatchId().equals(request.getBatchId())) {
+            if (audiencesOverlap(clash, request.getBatchId(), request.getGroupId())) {
                 conflicts.add(ScheduleConflictDto.builder()
                         .type("BATCH_OVERLAP")
-                        .message("Batch " + clash.getBatch().getBatchName()
-                                + " already has a session " + slot)
+                        .message(audienceLabel(clash) + " already has a session " + slot)
                         .conflictingSessionId(clash.getSessionId())
                         .build());
             }
@@ -192,19 +200,54 @@ public class TimetableSessionService {
         return conflicts;
     }
 
-    // Warn when the cohort outgrows the room
+    /**
+     * Two sessions collide for students when they share a batch and their group audiences meet.
+     * A whole-batch lecture carries a null group, so it collides with every group of that batch.
+     */
+    private boolean audiencesOverlap(TimetableSessionEntity clash, UUID batchId, UUID groupId) {
+        if (!clash.getBatch().getBatchId().equals(batchId)) {
+            return false;
+        }
+
+        StudentGroupEntity clashGroup = clash.getStudentGroup();
+        return clashGroup == null || groupId == null || clashGroup.getGroupId().equals(groupId);
+    }
+
+    // Names whichever audience the clashing session belongs to
+    private String audienceLabel(TimetableSessionEntity clash) {
+        StudentGroupEntity group = clash.getStudentGroup();
+        return group == null
+                ? "Batch " + clash.getBatch().getBatchName()
+                : clash.getBatch().getBatchName() + " " + group.getGroupName();
+    }
+
+    // Warn when the audience outgrows the room, counting only the group when one is set
     private List<ScheduleConflictDto> detectCapacityConflict(TimetableSessionRequestDto request) {
         RoomEntity room = findRoomOrThrow(request.getRoomId());
-        BatchEntity batch = findBatchOrThrow(request.getBatchId());
-
-        int students = batch.getStudents() != null ? batch.getStudents().size() : 0;
         Integer capacity = room.getCapacity();
 
-        if (capacity != null && students > capacity) {
+        if (capacity == null) {
+            return List.of();
+        }
+
+        int students;
+        String audience;
+
+        if (request.getGroupId() != null) {
+            StudentGroupEntity group = findGroupOrNull(request.getGroupId());
+            students = studentRepository.countByStudentGroup_GroupId(request.getGroupId());
+            audience = group != null ? group.getGroupName() : "group";
+        } else {
+            BatchEntity batch = findBatchOrThrow(request.getBatchId());
+            students = studentRepository.countByBatch_BatchId(request.getBatchId());
+            audience = "batch " + batch.getBatchName();
+        }
+
+        if (students > capacity) {
             return List.of(ScheduleConflictDto.builder()
                     .type("CAPACITY_EXCEEDED")
                     .message("Room " + room.getRoomCode() + " holds " + capacity
-                            + " but batch has " + students + " students")
+                            + " but " + audience + " has " + students + " students")
                     .build());
         }
 
@@ -243,6 +286,15 @@ public class TimetableSessionService {
                 .orElseThrow(() -> new IllegalArgumentException("Room not found: " + roomId));
     }
 
+    // Null means the whole batch attends, which is how a lecture is stored
+    private StudentGroupEntity findGroupOrNull(UUID groupId) {
+        if (groupId == null) {
+            return null;
+        }
+        return studentGroupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("Group not found: " + groupId));
+    }
+
     // Blank strings become null
     private String trimOrNull(String value) {
         if (value == null) return null;
@@ -265,6 +317,8 @@ public class TimetableSessionService {
         ModuleEntity module = session.getModule();
         TeacherEntity teacher = session.getTeacher();
         RoomEntity room = session.getRoom();
+        StudentGroupEntity group = session.getStudentGroup();
+        TimeSlotEntity slot = session.getTimeSlot();
 
         return TimetableSessionResponseDto.builder()
                 .sessionId(session.getSessionId())
@@ -279,6 +333,12 @@ public class TimetableSessionService {
                 .roomCode(room != null ? room.getRoomCode() : null)
                 .roomName(room != null ? room.getRoomName() : null)
                 .roomCapacity(room != null ? room.getCapacity() : null)
+                .groupId(group != null ? group.getGroupId() : null)
+                .groupName(group != null ? group.getGroupName() : null)
+                .slotId(slot != null ? slot.getSlotId() : null)
+                .periodNumber(slot != null ? slot.getPeriodNumber() : null)
+                .dayOfWeek(slot != null ? slot.getDayOfWeek() : session.getSessionDate().getDayOfWeek())
+                .runId(session.getGenerationRun() != null ? session.getGenerationRun().getRunId() : null)
                 .sessionDate(session.getSessionDate())
                 .startTime(session.getStartTime())
                 .endTime(session.getEndTime())

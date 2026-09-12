@@ -39,7 +39,7 @@ public class ExamRoomService {
         RoomEntity room = findRoomOrThrow(request.getRoomId());
 
         validateCapacity(room, request.getAllocatedCapacity());
-        rejectIfRoomClashes(exam, room);
+        rejectIfRoomClashes(exam, room, request.getAllocatedCapacity(), null);
 
         ExamRoomEntity examRoom = ExamRoomEntity.builder()
                 .exam(exam)
@@ -104,7 +104,7 @@ public class ExamRoomService {
 
         validateCapacity(room, request.getAllocatedCapacity());
         if (roomChanged) {
-            rejectIfRoomClashes(exam, room);
+            rejectIfRoomClashes(exam, room, request.getAllocatedCapacity(), examRoomId);
         }
 
         // Seats already placed must still fit
@@ -142,19 +142,38 @@ public class ExamRoomService {
         examRoomRepository.delete(examRoom);
     }
 
-    // Allocation cannot exceed physical capacity
+    /**
+     * A hall seats fewer candidates than students, because exam spacing leaves seats empty.
+     * Allocation is checked against that exam capacity rather than the teaching capacity.
+     */
     private void validateCapacity(RoomEntity room, Integer allocatedCapacity) {
-        if (room.getCapacity() != null && allocatedCapacity > room.getCapacity()) {
+        int examCapacity = examCapacityOf(room);
+
+        if (allocatedCapacity > examCapacity) {
             throw new IllegalArgumentException(
-                    "Allocated capacity " + allocatedCapacity + " exceeds room capacity "
-                            + room.getCapacity() + " for " + room.getRoomCode()
+                    "Allocated capacity " + allocatedCapacity + " exceeds the exam capacity of "
+                            + examCapacity + " for " + room.getRoomCode()
+                            + " (seats " + room.getCapacity() + " for teaching, spaced for exams)"
             );
         }
     }
 
-    // One hall cannot host two overlapping exams
-    private void rejectIfRoomClashes(ExamEntity exam, RoomEntity room) {
-        List<ExamRoomEntity> clashes = examRoomRepository.findRoomClashes(
+    // Seats left once exam spacing is applied
+    private int examCapacityOf(RoomEntity room) {
+        if (room.getCapacity() == null) {
+            return 0;
+        }
+        double factor = room.getExamCapacityFactor() == null ? 0.5 : room.getExamCapacityFactor();
+        return (int) Math.floor(room.getCapacity() * factor);
+    }
+
+    /**
+     * Two exams may share a hall, which is good practice: neighbours sitting different
+     * papers cannot collude, and it saves both rooms and invigilators. What is not allowed
+     * is overfilling the hall, so the check is on total seats rather than on exclusivity.
+     */
+    private void rejectIfRoomClashes(ExamEntity exam, RoomEntity room, Integer allocatedCapacity, UUID excludeId) {
+        List<ExamRoomEntity> sharing = examRoomRepository.findRoomClashes(
                 room.getRoomId(),
                 exam.getExamId(),
                 exam.getExamDate(),
@@ -162,12 +181,28 @@ public class ExamRoomService {
                 exam.getEndTime()
         );
 
-        if (!clashes.isEmpty()) {
-            ExamEntity other = clashes.get(0).getExam();
+        int alreadyAllocated = sharing.stream()
+                .filter(other -> excludeId == null || !other.getExamRoomId().equals(excludeId))
+                .mapToInt(other -> other.getAllocatedCapacity() != null ? other.getAllocatedCapacity() : 0)
+                .sum();
+
+        int physical = room.getCapacity() != null ? room.getCapacity() : 0;
+        int examCapacity = examCapacityOf(room);
+
+        // One exam alone keeps the spacing, a shared hall may fill to its physical limit
+        if (allocatedCapacity > examCapacity) {
             throw new IllegalArgumentException(
-                    "Room " + room.getRoomCode() + " is already used by exam "
-                            + other.getModule().getModuleCode() + " on " + other.getExamDate()
-                            + " at " + other.getStartTime() + "–" + other.getEndTime()
+                    "Allocated capacity " + allocatedCapacity + " exceeds the exam capacity of "
+                            + examCapacity + " for " + room.getRoomCode()
+                            + ". One exam cannot use more than the spaced seats."
+            );
+        }
+
+        if (alreadyAllocated + allocatedCapacity > physical) {
+            throw new IllegalArgumentException(
+                    "Room " + room.getRoomCode() + " seats " + physical + " and " + alreadyAllocated
+                            + " are already taken by an overlapping exam. Requested "
+                            + allocatedCapacity + "."
             );
         }
     }

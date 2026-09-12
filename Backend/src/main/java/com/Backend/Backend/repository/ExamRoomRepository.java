@@ -19,6 +19,21 @@ public interface ExamRoomRepository extends JpaRepository<ExamRoomEntity, UUID> 
 
     List<ExamRoomEntity> findAllByExam_ExamId(UUID examId);
 
+    void deleteAllByExam_ExamId(UUID examId);
+
+    // Halls already carrying an overlapping exam, with how many seats they owe it
+    @Query("SELECT er FROM ExamRoomEntity er WHERE " +
+            "er.exam.examDate = :examDate AND " +
+            "er.exam.startTime < :endTime AND er.exam.endTime > :startTime AND " +
+            "er.exam.examId <> :examId AND " +
+            "UPPER(er.exam.status) <> 'CANCELLED'")
+    List<ExamRoomEntity> findOverlappingAllocations(
+            @Param("examId") UUID examId,
+            @Param("examDate") java.time.LocalDate examDate,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime
+    );
+
     /**
      * Finds the same room allocated to another exam whose slot overlaps.
      * Prevents one hall being used by two exams at once.

@@ -2,6 +2,7 @@ package com.Backend.Backend.dto.timetable;
 
 import lombok.*;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -30,6 +31,15 @@ public class TimetableSessionResponseDto {
     private String roomCode;
     private String roomName;
     private Integer roomCapacity;
+
+    private UUID groupId;
+    private String groupName;
+
+    private UUID slotId;
+    private Integer periodNumber;
+    private DayOfWeek dayOfWeek;
+
+    private UUID runId;
 
     private LocalDate sessionDate;
     private LocalTime startTime;

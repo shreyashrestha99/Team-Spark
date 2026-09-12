@@ -6,9 +6,11 @@ import com.Backend.Backend.dto.batchmodule.BatchModuleResponseDto;
 import com.Backend.Backend.entity.BatchEntity;
 import com.Backend.Backend.entity.BatchModuleEntity;
 import com.Backend.Backend.entity.ModuleEntity;
+import com.Backend.Backend.entity.TeacherEntity;
 import com.Backend.Backend.repository.BatchModuleRepository;
 import com.Backend.Backend.repository.BatchRepository;
 import com.Backend.Backend.repository.ModuleRepository;
+import com.Backend.Backend.repository.TeacherRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +28,7 @@ public class BatchModuleService {
     private final BatchModuleRepository batchModuleRepository;
     private final BatchRepository batchRepository;
     private final ModuleRepository moduleRepository;
+    private final TeacherRepository teacherRepository;
 
     // Assign a module to a batch
     @Transactional
@@ -41,7 +44,10 @@ public class BatchModuleService {
         BatchModuleEntity batchModule = BatchModuleEntity.builder()
                 .batch(batch)
                 .module(module)
+                .teacher(findTeacherOrNull(request.getTeacherId()))
                 .build();
+
+        applyDeliveryPattern(batchModule, request);
 
         return mapToDto(batchModuleRepository.save(batchModule));
     }
@@ -87,6 +93,9 @@ public class BatchModuleService {
 
         batchModule.setBatch(findBatchOrThrow(request.getBatchId()));
         batchModule.setModule(findModuleOrThrow(request.getModuleId()));
+        batchModule.setTeacher(findTeacherOrNull(request.getTeacherId()));
+
+        applyDeliveryPattern(batchModule, request);
 
         return mapToDto(batchModuleRepository.save(batchModule));
     }
@@ -95,6 +104,37 @@ public class BatchModuleService {
     @Transactional
     public void delete(UUID batchModuleId) {
         batchModuleRepository.delete(findOrThrow(batchModuleId));
+    }
+
+    /**
+     * Copies the weekly delivery pattern across, keeping each entity default when a field is omitted.
+     * The generator reads exactly these numbers when it works out what it has to place.
+     */
+    private void applyDeliveryPattern(BatchModuleEntity batchModule, BatchModuleRequestDto request) {
+        if (request.getLectureSessionsPerWeek() != null) {
+            batchModule.setLectureSessionsPerWeek(request.getLectureSessionsPerWeek());
+        }
+        if (request.getLectureDurationMinutes() != null) {
+            batchModule.setLectureDurationMinutes(request.getLectureDurationMinutes());
+        }
+        if (request.getTutorialSessionsPerWeek() != null) {
+            batchModule.setTutorialSessionsPerWeek(request.getTutorialSessionsPerWeek());
+        }
+        if (request.getTutorialDurationMinutes() != null) {
+            batchModule.setTutorialDurationMinutes(request.getTutorialDurationMinutes());
+        }
+        if (request.getWorkshopSessionsPerWeek() != null) {
+            batchModule.setWorkshopSessionsPerWeek(request.getWorkshopSessionsPerWeek());
+        }
+        if (request.getWorkshopDurationMinutes() != null) {
+            batchModule.setWorkshopDurationMinutes(request.getWorkshopDurationMinutes());
+        }
+        if (request.getSplitTutorialByGroup() != null) {
+            batchModule.setSplitTutorialByGroup(request.getSplitTutorialByGroup());
+        }
+        if (request.getSplitWorkshopByGroup() != null) {
+            batchModule.setSplitWorkshopByGroup(request.getSplitWorkshopByGroup());
+        }
     }
 
     // Shared lookup with a clear error
@@ -113,10 +153,36 @@ public class BatchModuleService {
                 .orElseThrow(() -> new IllegalArgumentException("Module not found: " + moduleId));
     }
 
+    // Optional, the generator picks a lecturer itself when none is named
+    private TeacherEntity findTeacherOrNull(UUID teacherId) {
+        if (teacherId == null) {
+            return null;
+        }
+        return teacherRepository.findById(teacherId)
+                .orElseThrow(() -> new IllegalArgumentException("Teacher not found: " + teacherId));
+    }
+
     // Entity to response DTO
     private BatchModuleResponseDto mapToDto(BatchModuleEntity batchModule) {
         BatchEntity batch = batchModule.getBatch();
         ModuleEntity module = batchModule.getModule();
+        TeacherEntity teacher = batchModule.getTeacher();
+
+        int groups = batch != null && batch.getStudentGroups() != null
+                ? Math.max(batch.getStudentGroups().size(), 1)
+                : 1;
+
+        int tutorialCopies = Boolean.TRUE.equals(batchModule.getSplitTutorialByGroup()) ? groups : 1;
+        int workshopCopies = Boolean.TRUE.equals(batchModule.getSplitWorkshopByGroup()) ? groups : 1;
+
+        // One student attends each type once, however many group copies the timetable holds
+        double contactMinutes = batchModule.getLectureSessionsPerWeek() * batchModule.getLectureDurationMinutes()
+                + batchModule.getTutorialSessionsPerWeek() * batchModule.getTutorialDurationMinutes()
+                + batchModule.getWorkshopSessionsPerWeek() * batchModule.getWorkshopDurationMinutes();
+
+        int sessionCount = batchModule.getLectureSessionsPerWeek()
+                + batchModule.getTutorialSessionsPerWeek() * tutorialCopies
+                + batchModule.getWorkshopSessionsPerWeek() * workshopCopies;
 
         return BatchModuleResponseDto.builder()
                 .batchModuleId(batchModule.getBatchModuleId())
@@ -126,6 +192,18 @@ public class BatchModuleService {
                 .moduleCode(module != null ? module.getModuleCode() : null)
                 .moduleName(module != null ? module.getModuleName() : null)
                 .credits(module != null ? module.getCredits() : null)
+                .teacherId(teacher != null ? teacher.getTeacherId() : null)
+                .teacherName(teacher != null && teacher.getUser() != null ? teacher.getUser().getFullName() : null)
+                .lectureSessionsPerWeek(batchModule.getLectureSessionsPerWeek())
+                .lectureDurationMinutes(batchModule.getLectureDurationMinutes())
+                .tutorialSessionsPerWeek(batchModule.getTutorialSessionsPerWeek())
+                .tutorialDurationMinutes(batchModule.getTutorialDurationMinutes())
+                .workshopSessionsPerWeek(batchModule.getWorkshopSessionsPerWeek())
+                .workshopDurationMinutes(batchModule.getWorkshopDurationMinutes())
+                .splitTutorialByGroup(batchModule.getSplitTutorialByGroup())
+                .splitWorkshopByGroup(batchModule.getSplitWorkshopByGroup())
+                .weeklyContactHours(Math.round(contactMinutes / 60.0 * 100.0) / 100.0)
+                .weeklySessionCount(sessionCount)
                 .createdAt(batchModule.getCreatedAt())
                 .build();
     }

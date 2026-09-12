@@ -40,6 +40,21 @@ public class TimetableSessionEntity {
     @JoinColumn(name = "room_id", nullable = false)
     private RoomEntity room;
 
+    // Null for a lecture, which the whole batch attends
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private StudentGroupEntity studentGroup;
+
+    // Grid cell this session was placed in, null when an admin scheduled it by hand
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "slot_id")
+    private TimeSlotEntity timeSlot;
+
+    // The generator run that produced this session, null when created manually
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "run_id")
+    private GenerationRunEntity generationRun;
+
     @Column(name = "session_date", nullable = false)
     private LocalDate sessionDate;
 

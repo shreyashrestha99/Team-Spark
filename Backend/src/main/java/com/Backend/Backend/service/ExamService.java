@@ -11,6 +11,7 @@ import com.Backend.Backend.repository.BatchRepository;
 import com.Backend.Backend.repository.ExamRepository;
 import com.Backend.Backend.repository.ModuleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,11 +26,13 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ExamService {
 
     private final ExamRepository examRepository;
     private final BatchRepository batchRepository;
     private final ModuleRepository moduleRepository;
+    private final ExamSeatingService examSeatingService;
 
     // Schedule a new exam
     @Transactional
@@ -51,7 +54,20 @@ public class ExamService {
                 .status(hasText(request.getStatus()) ? request.getStatus().trim() : "SCHEDULED")
                 .build();
 
-        return mapToDto(examRepository.save(exam));
+        ExamEntity saved = examRepository.save(exam);
+
+        // Creating an exam should hand back a finished seating plan, not an empty shell.
+        // A hall shortage is reported on the plan rather than failing the exam itself.
+        if (request.getAutoAllocateSeating() == null || request.getAutoAllocateSeating()) {
+            try {
+                examSeatingService.autoAllocate(saved.getExamId());
+            } catch (IllegalArgumentException ex) {
+                log.warn("Exam {} created without seating: {}",
+                        saved.getModule().getModuleCode(), ex.getMessage());
+            }
+        }
+
+        return mapToDto(saved);
     }
 
     // Paged exam list with filters

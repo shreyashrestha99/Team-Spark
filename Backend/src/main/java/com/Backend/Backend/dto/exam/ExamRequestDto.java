@@ -34,6 +34,12 @@ public class ExamRequestDto {
     @Size(max = 50, message = "Exam type must be under 50 characters")
     private String examType;
 
+    /**
+     * Allocates halls and seats the moment the exam is created. Defaults to true,
+     * so scheduling an exam produces a finished seating plan in one step.
+     */
+    private Boolean autoAllocateSeating;
+
     // Defaults to SCHEDULED when omitted
     @Size(max = 30, message = "Status must be under 30 characters")
     private String status;

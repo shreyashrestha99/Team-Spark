@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +18,14 @@ public interface StudentRepository extends JpaRepository<StudentEntity, UUID> {
     Optional<StudentEntity> findByUser_UserId(UUID userId);
 
     Optional<StudentEntity> findByStudentNumber(String studentNumber);
+
+    List<StudentEntity> findAllByBatch_BatchId(UUID batchId);
+
+    List<StudentEntity> findAllByStudentGroup_GroupId(UUID groupId);
+
+    int countByBatch_BatchId(UUID batchId);
+
+    int countByStudentGroup_GroupId(UUID groupId);
 
     boolean existsByStudentNumberIgnoreCase(String studentNumber);
 

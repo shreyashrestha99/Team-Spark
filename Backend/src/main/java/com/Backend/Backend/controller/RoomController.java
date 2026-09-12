@@ -37,6 +37,7 @@ public class RoomController {
     @GetMapping
     public ResponseEntity<ApiResponseDto<PageResponseDto<RoomResponseDto>>> getAll(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) String roomType,
             @RequestParam(required = false) Integer minCapacity,
             @RequestParam(defaultValue = "0") int page,
@@ -45,7 +46,7 @@ public class RoomController {
             @RequestParam(defaultValue = "asc") String sortDirection
     ) {
         PageResponseDto<RoomResponseDto> rooms =
-                roomService.getAll(search, roomType, minCapacity, page, size, sortBy, sortDirection);
+                roomService.getAll(search, buildingId, roomType, minCapacity, page, size, sortBy, sortDirection);
         return ResponseEntity.ok(ApiResponseDto.success("Rooms fetched successfully", rooms));
     }
 

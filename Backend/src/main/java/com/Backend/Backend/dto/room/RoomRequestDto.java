@@ -1,11 +1,15 @@
 package com.Backend.Backend.dto.room;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -35,8 +39,20 @@ public class RoomRequestDto {
     @Max(value = 100, message = "Floor must be 100 or less")
     private Integer floor;
 
-    @Size(max = 100, message = "Building must be under 100 characters")
-    private String building;
+    private UUID buildingId;
+
+    /**
+     * Seats along one row. Rows are derived from capacity, so the admin never types a seat name.
+     * Leave null and the room simply has no seat grid, which excludes it from exam seating.
+     */
+    @Min(value = 1, message = "Seats per row must be at least 1")
+    @Max(value = 50, message = "Seats per row must be 50 or less")
+    private Integer seatsPerRow;
+
+    // Share of the grid usable under exam spacing, defaults to 0.5
+    @DecimalMin(value = "0.1", message = "Exam capacity factor must be at least 0.1")
+    @DecimalMax(value = "1.0", message = "Exam capacity factor must be 1.0 or less")
+    private Double examCapacityFactor;
 
     // Facility flags default to false
     private Boolean hasProjector;

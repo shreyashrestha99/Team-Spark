@@ -27,6 +27,9 @@ public class TimetableSessionRequestDto {
     @NotNull(message = "Room is required")
     private UUID roomId;
 
+    // Null for a lecture, which the whole batch attends
+    private UUID groupId;
+
     @NotNull(message = "Session date is required")
     private LocalDate sessionDate;
 

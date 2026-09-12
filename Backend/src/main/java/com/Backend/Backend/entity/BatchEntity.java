@@ -32,6 +32,14 @@ public class BatchEntity {
     @Column(name = "batch_name", nullable = false, length = 100)
     private String batchName;
 
+    // Year the cohort started, e.g. 2025
+    @Column(name = "intake_year")
+    private Integer intakeYear;
+
+    // MORNING or DAY, restricts the generator to that half of the grid
+    @Column(name = "shift", length = 30)
+    private String shift;
+
     @Column(name = "year_of_study", nullable = false)
     private Integer yearOfStudy;
 
@@ -59,6 +67,10 @@ public class BatchEntity {
     @Builder.Default
     @OneToMany(mappedBy = "batch", cascade = CascadeType.ALL)
     private List<StudentEntity> students = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "batch", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StudentGroupEntity> studentGroups = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "batch", cascade = CascadeType.ALL, orphanRemoval = true)

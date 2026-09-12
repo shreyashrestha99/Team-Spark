@@ -34,6 +34,11 @@ public class TeacherEntity {
     @Column(name = "designation", length = 100)
     private String designation;
 
+    // Weekly teaching hours this lecturer should not exceed
+    @Builder.Default
+    @Column(name = "max_weekly_hours", nullable = false)
+    private Integer maxWeeklyHours = 20;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -45,4 +50,8 @@ public class TeacherEntity {
     @Builder.Default
     @OneToMany(mappedBy = "teacher")
     private List<TimetableSessionEntity> timetableSessions = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TeacherAvailabilityEntity> availability = new ArrayList<>();
 }

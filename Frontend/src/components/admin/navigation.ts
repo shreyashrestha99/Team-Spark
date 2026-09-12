@@ -12,13 +12,22 @@ import {
   Building2,
   ShieldCheck,
   Armchair,
+  Building,
+  Users,
+  Clock,
+  CalendarOff,
+  UserX,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react'
 import type { ActiveTab } from './types'
 import type { ResourceKey } from './resources'
 
-// Either a user-role tab or a generic CRUD resource
-export type AdminView = ActiveTab | ResourceKey
+// The routine generator is a bespoke screen rather than a CRUD table
+export type SpecialView = 'ROUTINE_GENERATOR' | 'EXAM_SEATING'
+
+// Either a user-role tab, a generic CRUD resource, or a bespoke screen
+export type AdminView = ActiveTab | ResourceKey | SpecialView
 
 export interface NavItem {
   id: AdminView
@@ -49,13 +58,19 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'BATCHES', label: 'Batches', icon: Layers },
       { id: 'MODULES', label: 'Modules', icon: BookOpen },
       { id: 'BATCH_MODULES', label: 'Batch Modules', icon: LayoutDashboard },
+      { id: 'STUDENT_GROUPS', label: 'Student Groups', icon: Users },
+      { id: 'BUILDINGS', label: 'Buildings', icon: Building },
       { id: 'ROOMS', label: 'Rooms', icon: DoorOpen, statKey: 'rooms' },
     ],
   },
   {
     heading: 'Scheduling',
     items: [
+      { id: 'ROUTINE_GENERATOR', label: 'Generate Routine', icon: Wand2 },
       { id: 'TIMETABLE_SESSIONS', label: 'Timetable', icon: CalendarDays },
+      { id: 'TIME_SLOTS', label: 'Time Slots', icon: Clock },
+      { id: 'TEACHER_AVAILABILITY', label: 'Availability', icon: UserX },
+      { id: 'HOLIDAYS', label: 'Holidays', icon: CalendarOff },
     ],
   },
   {
@@ -64,6 +79,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'EXAMS', label: 'Exams', icon: FileSpreadsheet },
       { id: 'EXAM_ROOMS', label: 'Exam Rooms', icon: Building2 },
       { id: 'INVIGILATORS', label: 'Invigilators', icon: ShieldCheck },
+      { id: 'EXAM_SEATING', label: 'Auto Seating', icon: Armchair },
       { id: 'SEAT_ALLOCATIONS', label: 'Seat Plan', icon: Armchair },
     ],
   },

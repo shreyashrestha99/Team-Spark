@@ -32,6 +32,11 @@ public class StudentEntity {
     @JoinColumn(name = "batch_id")
     private BatchEntity batch;
 
+    // Tutorial and workshop group within the batch
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private StudentGroupEntity studentGroup;
+
     @Column(name = "student_number", nullable = false, unique = true, length = 50)
     private String studentNumber;
 

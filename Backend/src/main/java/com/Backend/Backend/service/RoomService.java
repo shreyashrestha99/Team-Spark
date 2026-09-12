@@ -3,7 +3,9 @@ package com.Backend.Backend.service;
 import com.Backend.Backend.dto.PageResponseDto;
 import com.Backend.Backend.dto.room.RoomRequestDto;
 import com.Backend.Backend.dto.room.RoomResponseDto;
+import com.Backend.Backend.entity.BuildingEntity;
 import com.Backend.Backend.entity.RoomEntity;
+import com.Backend.Backend.repository.BuildingRepository;
 import com.Backend.Backend.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class RoomService {
 
     private final RoomRepository roomRepository;
+    private final BuildingRepository buildingRepository;
 
     // Create a new room
     @Transactional
@@ -37,7 +40,12 @@ public class RoomService {
                 .roomType(trimOrNull(request.getRoomType()))
                 .capacity(request.getCapacity())
                 .floor(request.getFloor())
-                .building(trimOrNull(request.getBuilding()))
+                .building(findBuildingOrNull(request.getBuildingId()))
+                .seatsPerRow(request.getSeatsPerRow())
+                .seatRows(deriveSeatRows(request.getCapacity(), request.getSeatsPerRow()))
+                .examCapacityFactor(request.getExamCapacityFactor() == null
+                        ? 0.5
+                        : request.getExamCapacityFactor())
                 .hasProjector(Boolean.TRUE.equals(request.getHasProjector()))
                 .hasComputers(Boolean.TRUE.equals(request.getHasComputers()))
                 .hasAc(Boolean.TRUE.equals(request.getHasAc()))
@@ -51,6 +59,7 @@ public class RoomService {
     @Transactional(readOnly = true)
     public PageResponseDto<RoomResponseDto> getAll(
             String search,
+            UUID buildingId,
             String roomType,
             Integer minCapacity,
             int page,
@@ -66,6 +75,7 @@ public class RoomService {
 
         Page<RoomEntity> result = roomRepository.searchRooms(
                 blankIfNull(search),
+                buildingId,
                 blankIfNull(roomType),
                 minCapacity,
                 pageable
@@ -103,7 +113,12 @@ public class RoomService {
         room.setRoomType(trimOrNull(request.getRoomType()));
         room.setCapacity(request.getCapacity());
         room.setFloor(request.getFloor());
-        room.setBuilding(trimOrNull(request.getBuilding()));
+        room.setBuilding(findBuildingOrNull(request.getBuildingId()));
+        room.setSeatsPerRow(request.getSeatsPerRow());
+        room.setSeatRows(deriveSeatRows(request.getCapacity(), request.getSeatsPerRow()));
+        if (request.getExamCapacityFactor() != null) {
+            room.setExamCapacityFactor(request.getExamCapacityFactor());
+        }
 
         // Flags only change when supplied
         if (request.getHasProjector() != null) room.setHasProjector(request.getHasProjector());
@@ -136,6 +151,35 @@ public class RoomService {
         roomRepository.delete(room);
     }
 
+    /**
+     * Rows are worked out from capacity so the admin never types a seat name or a row count.
+     * A 55 seat room at 10 per row becomes 6 rows, the last one only part filled.
+     */
+    private Integer deriveSeatRows(Integer capacity, Integer seatsPerRow) {
+        if (capacity == null || seatsPerRow == null || seatsPerRow < 1) {
+            return null;
+        }
+        return (int) Math.ceil((double) capacity / seatsPerRow);
+    }
+
+    // Seats left once exam spacing is applied
+    private Integer examCapacityOf(RoomEntity room) {
+        if (room.getCapacity() == null) {
+            return null;
+        }
+        double factor = room.getExamCapacityFactor() == null ? 0.5 : room.getExamCapacityFactor();
+        return (int) Math.floor(room.getCapacity() * factor);
+    }
+
+    // Optional link, a room may sit outside any recorded building
+    private BuildingEntity findBuildingOrNull(UUID buildingId) {
+        if (buildingId == null) {
+            return null;
+        }
+        return buildingRepository.findById(buildingId)
+                .orElseThrow(() -> new IllegalArgumentException("Building not found: " + buildingId));
+    }
+
     // Shared lookup with a clear error
     private RoomEntity findOrThrow(UUID roomId) {
         return roomRepository.findById(roomId)
@@ -156,6 +200,8 @@ public class RoomService {
 
     // Entity to response DTO
     private RoomResponseDto mapToDto(RoomEntity room) {
+        BuildingEntity building = room.getBuilding();
+
         StringBuilder label = new StringBuilder(room.getRoomCode());
         label.append(" — ").append(room.getRoomName());
         if (room.getCapacity() != null) {
@@ -169,7 +215,13 @@ public class RoomService {
                 .roomType(room.getRoomType())
                 .capacity(room.getCapacity())
                 .floor(room.getFloor())
-                .building(room.getBuilding())
+                .buildingId(building != null ? building.getBuildingId() : null)
+                .buildingName(building != null ? building.getBuildingName() : null)
+                .buildingCode(building != null ? building.getBuildingCode() : null)
+                .seatRows(room.getSeatRows())
+                .seatsPerRow(room.getSeatsPerRow())
+                .examCapacityFactor(room.getExamCapacityFactor())
+                .examCapacity(examCapacityOf(room))
                 .hasProjector(room.getHasProjector())
                 .hasComputers(room.getHasComputers())
                 .hasAc(room.getHasAc())

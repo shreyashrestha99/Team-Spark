@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -15,6 +16,9 @@ public interface BatchModuleRepository extends JpaRepository<BatchModuleEntity, 
 
     // Blocks assigning the same module twice
     boolean existsByBatch_BatchIdAndModule_ModuleId(UUID batchId, UUID moduleId);
+
+    // Delivery patterns the generator expands into session requirements
+    List<BatchModuleEntity> findAllByBatch_BatchId(UUID batchId);
 
     // Combined list with batch and module filters
     @Query("SELECT bm FROM BatchModuleEntity bm WHERE " +
