@@ -24,6 +24,14 @@ public interface SeatAllocationRepository extends JpaRepository<SeatAllocationEn
 
     List<SeatAllocationEntity> findAllByExam_ExamId(UUID examId);
 
+    // Every desk one student has been given, earliest exam first
+    @Query("SELECT sa FROM SeatAllocationEntity sa " +
+            "JOIN FETCH sa.exam e JOIN FETCH e.module JOIN FETCH e.batch " +
+            "JOIN FETCH sa.examRoom er JOIN FETCH er.room r LEFT JOIN FETCH r.building " +
+            "WHERE sa.student.studentId = :studentId AND UPPER(e.status) <> 'CANCELLED' " +
+            "ORDER BY e.examDate ASC, e.startTime ASC")
+    List<SeatAllocationEntity> findMySeats(@Param("studentId") UUID studentId);
+
     void deleteAllByExam_ExamId(UUID examId);
 
     /**

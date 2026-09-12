@@ -20,6 +20,11 @@ public interface BatchModuleRepository extends JpaRepository<BatchModuleEntity, 
     // Delivery patterns the generator expands into session requirements
     List<BatchModuleEntity> findAllByBatch_BatchId(UUID batchId);
 
+    // A batch's modules loaded with them, for callers working outside a transaction
+    @Query("SELECT bm FROM BatchModuleEntity bm JOIN FETCH bm.module m " +
+            "WHERE bm.batch.batchId = :batchId ORDER BY m.moduleCode ASC")
+    List<BatchModuleEntity> findAllWithModuleByBatchId(@Param("batchId") UUID batchId);
+
     // Combined list with batch and module filters
     @Query("SELECT bm FROM BatchModuleEntity bm WHERE " +
             "(:batchId IS NULL OR bm.batch.batchId = :batchId) AND " +

@@ -30,6 +30,18 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+/**
+ * Where each role lands after signing in. Staff have no personal timetable,
+ * so they stay on the public home page.
+ */
+export function homePathFor(role?: string): string {
+  const upper = role?.toUpperCase() || ''
+  if (upper.includes('ADMIN')) return '/admin/dashboard'
+  if (upper.includes('STUDENT')) return '/student/dashboard'
+  if (upper.includes('TEACHER')) return '/teacher/dashboard'
+  return '/'
+}
+
 const SESSION_TOKEN_KEY = 'rte_session_token'
 
 export function AuthProvider({ children }: { children: ReactNode }) {

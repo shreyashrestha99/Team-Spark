@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
-  User,
-  Briefcase,
   Mail,
   Lock,
   Eye,
@@ -13,18 +11,15 @@ import {
   AlertCircle,
   KeyRound,
 } from 'lucide-react'
-import { useAuth } from '../context/Auth'
+import { homePathFor, useAuth } from '../context/Auth'
 import { IslingtonLogo } from '../components/IslingtonLogo'
-
-type Tab = 'USER' | 'ADMIN'
 
 const REMEMBERED_EMAIL_KEY = 'rte_remembered_email'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login, user, isAdmin } = useAuth()
+  const { login, user } = useAuth()
 
-  const [tab, setTab] = useState<Tab>('ADMIN')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -32,16 +27,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Redirect if already logged in (admin goes to dashboard)
+  // Already signed in, so go straight to that role's portal
   useEffect(() => {
     if (user) {
-      if (isAdmin) {
-        navigate('/admin/dashboard', { replace: true })
-      } else {
-        navigate('/', { replace: true })
-      }
+      navigate(homePathFor(user.role), { replace: true })
     }
-  }, [user, isAdmin, navigate])
+  }, [user, navigate])
 
   // Restore remembered email on mount (purely non-sensitive convenience data)
   useEffect(() => {
@@ -79,13 +70,8 @@ export default function LoginPage() {
         localStorage.removeItem(REMEMBERED_EMAIL_KEY)
       }
 
-      // Admin goes to dashboard, others go home
-      const userRole = loggedInUser?.role?.toUpperCase() || ''
-      if (userRole.includes('ADMIN')) {
-        navigate('/admin/dashboard', { replace: true })
-      } else {
-        navigate('/', { replace: true })
-      }
+      // Each role lands on its own portal
+      navigate(homePathFor(loggedInUser?.role), { replace: true })
     } catch (err: any) {
       setError(err.message || 'Could not sign you in. Please check your credentials.')
     } finally {
@@ -95,33 +81,42 @@ export default function LoginPage() {
 
   // Helper function to quickly fill admin credentials for testing
   const fillAdminCredentials = () => {
-    setTab('ADMIN')
     setEmail('admin')
     setPassword('admin123')
     setError(null)
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#F5F8FE] via-[#FAFCFF] to-[#EDF3FC] px-4 py-12">
-      {/* Background ambient lighting and architectural watermark */}
-      <BackgroundDecor />
+    <div className="relative min-h-screen overflow-hidden bg-[#0F1E3D] px-4 py-12">
+      {/* Islington College campus behind a dark wash so the card stays readable */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/islington-campus.jpg')" }}
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0F1E3D]/80 via-[#0F1E3D]/60 to-[#0F1E3D]/85"
+        aria-hidden="true"
+      />
 
       <div className="relative mx-auto w-full max-w-[560px]">
         {/* Top Header & Logo */}
         <header className="mb-9 text-center">
           <div className="mb-6 flex justify-center">
-            <IslingtonLogo size="lg" />
+            <div className="rounded-2xl bg-white/95 px-5 py-3 shadow-lg">
+              <IslingtonLogo size="lg" />
+            </div>
           </div>
-          <h1 className="mx-auto max-w-[480px] text-[28px] font-bold leading-[1.25] tracking-tight text-[#1B2A4A] sm:text-[32px]">
+          <h1 className="mx-auto max-w-[480px] text-[28px] font-bold leading-[1.25] tracking-tight text-white drop-shadow sm:text-[32px]">
             Academic Scheduling &amp; Resource Management Platform
           </h1>
-          <p className="mt-3.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[14px] text-[#7C8DB0] sm:text-[15px]">
+          <p className="mt-3.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[14px] text-[#D6E2F5] sm:text-[15px]">
             <span>Smarter Scheduling</span>
-            <span aria-hidden="true" className="text-[#B9C6DE]">
+            <span aria-hidden="true" className="text-[#8FA6CC]">
               •
             </span>
             <span>Better Resource Utilization</span>
-            <span aria-hidden="true" className="text-[#B9C6DE]">
+            <span aria-hidden="true" className="text-[#8FA6CC]">
               •
             </span>
             <span>A Connected Campus</span>
@@ -130,31 +125,6 @@ export default function LoginPage() {
 
         {/* Login Card */}
         <div className="rounded-[24px] border border-[#EDF1F7] bg-white p-7 shadow-[0_12px_45px_-10px_rgba(26,45,85,0.1)] sm:p-9">
-          {/* Tab Switcher */}
-          <div
-            role="tablist"
-            aria-label="Account type"
-            className="mb-8 flex rounded-[14px] border border-[#E4EAF4] bg-[#F8FAFC] p-1"
-          >
-            <TabButton
-              active={tab === 'USER'}
-              onClick={() => {
-                setTab('USER')
-                setError(null)
-              }}
-              icon={<User className="h-5 w-5" strokeWidth={1.75} />}
-              label="Student / Staff"
-            />
-            <TabButton
-              active={tab === 'ADMIN'}
-              onClick={() => {
-                setTab('ADMIN')
-                setError(null)
-              }}
-              icon={<Briefcase className="h-5 w-5" strokeWidth={1.75} />}
-              label="Administrator"
-            />
-          </div>
 
           <div className="flex items-start justify-between">
             <div>
@@ -162,9 +132,7 @@ export default function LoginPage() {
                 Login to Your Account
               </h2>
               <p className="mt-1.5 text-[14px] text-[#8496B5] sm:text-[15px]">
-                {tab === 'ADMIN'
-                  ? 'Manage timetables, venues, and academic resources.'
-                  : 'Access your timetable, Exams, and academic resources.'}
+                Students, lecturers and administrators all sign in here.
               </p>
             </div>
 
@@ -182,7 +150,7 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="mt-7 space-y-5" noValidate>
-            <Field label="Email Address" htmlFor="email">
+            <Field label="Username or Email" htmlFor="email">
               <Mail
                 className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#94A3B8]"
                 strokeWidth={1.75}
@@ -197,11 +165,7 @@ export default function LoginPage() {
                   setEmail(e.target.value)
                   setError(null)
                 }}
-                placeholder={
-                  tab === 'ADMIN'
-                    ? 'e.g. admin or admin@islingtoncollege.edu.np'
-                    : 'e.g. student@islington.edu.np'
-                }
+                placeholder="e.g. your.username or name@islington.edu.np"
                 className="h-[56px] w-full rounded-[14px] border border-[#E4EAF4] pl-12 pr-4 text-[15px] text-[#1B2A4A] outline-none transition placeholder:text-[#A9B6CC] focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
               />
             </Field>
@@ -256,13 +220,6 @@ export default function LoginPage() {
                 </span>
                 <span className="text-[14px] text-[#475467]">Remember me</span>
               </label>
-
-              <Link
-                to="/"
-                className="text-[14px] font-medium text-[#2563EB] hover:underline"
-              >
-                Back to Home
-              </Link>
             </div>
 
             {/* Error Message */}
@@ -295,7 +252,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <footer className="mt-8 text-center text-[13px] leading-relaxed text-[#9AA9C4]">
+        <footer className="mt-8 text-center text-[13px] leading-relaxed text-[#C5D3EA]">
           <p>Islington College &nbsp;|&nbsp; RTE Department</p>
           <p className="mt-1">
             Automated Academic Scheduling &amp; Resource Management Platform
@@ -306,34 +263,6 @@ export default function LoginPage() {
   )
 }
 
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
-  label: string
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2.5 rounded-[12px] px-4 py-3 text-[14px] font-medium transition cursor-pointer ${
-        active
-          ? 'bg-[#2563EB] text-white shadow-sm'
-          : 'bg-transparent text-[#64748B] hover:text-[#1B2A4A]'
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  )
-}
 
 function Field({
   label,
@@ -354,46 +283,5 @@ function Field({
       </label>
       <div className="relative">{children}</div>
     </div>
-  )
-}
-
-function BackgroundDecor() {
-  return (
-    <>
-      <div className="pointer-events-none absolute -left-32 -top-32 h-[420px] w-[420px] rounded-full bg-[#DCE8FB] opacity-50 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -right-32 h-[460px] w-[460px] rounded-full bg-[#DDE8FA] opacity-60 blur-3xl" />
-
-      {/* Clock tower campus architecture vector watermark */}
-      <svg
-        className="pointer-events-none absolute bottom-0 left-0 h-[320px] w-[320px] text-[#CBD5E1] opacity-35"
-        viewBox="0 0 240 240"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        aria-hidden="true"
-      >
-        <rect x="20" y="70" width="46" height="150" />
-        <rect x="32" y="46" width="22" height="24" />
-        <circle cx="43" cy="58" r="7" />
-        <path d="M43 54v4l3 2" />
-        <path d="M32 46l11-14 11 14" />
-        <rect x="66" y="108" width="120" height="112" />
-        <path d="M66 108h120" />
-        <path d="M66 138h120M66 168h120M66 198h120" />
-        <rect x="80" y="118" width="16" height="14" />
-        <rect x="110" y="118" width="16" height="14" />
-        <rect x="140" y="118" width="16" height="14" />
-        <rect x="80" y="148" width="16" height="14" />
-        <rect x="110" y="148" width="16" height="14" />
-        <rect x="140" y="148" width="16" height="14" />
-        <rect x="80" y="178" width="16" height="14" />
-        <rect x="110" y="178" width="16" height="14" />
-        <rect x="140" y="178" width="16" height="14" />
-        <rect x="30" y="96" width="14" height="16" />
-        <rect x="30" y="128" width="14" height="16" />
-        <rect x="30" y="160" width="14" height="16" />
-        <path d="M0 220h240" />
-      </svg>
-    </>
   )
 }

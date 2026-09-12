@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { IslingtonLogo } from './IslingtonLogo'
-import { useAuth } from '../context/Auth'
+import { homePathFor, useAuth } from '../context/Auth'
 import {
   User,
   ChevronDown,
@@ -21,6 +21,7 @@ export const Navbar: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const isHome = location.pathname === '/'
+  const dashboardPath = homePathFor(user?.role)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -82,19 +83,19 @@ export const Navbar: React.FC = () => {
             About
           </a>
 
-          {/* Admin Dashboard Link */}
-          {user && isAdmin && (
+          {/* Dashboard link for any role that has a portal */}
+          {user && dashboardPath !== '/' && (
             <Link
-              to="/admin/dashboard"
+              to={dashboardPath}
               className={`relative flex items-center gap-1.5 py-2 transition-colors ${
-                location.pathname === '/admin/dashboard'
+                location.pathname === dashboardPath
                   ? 'font-semibold text-[#2563EB]'
                   : 'text-[#475467] hover:text-[#1B2A4A]'
               }`}
             >
               <LayoutDashboard className="h-4 w-4" />
               <span>Dashboard</span>
-              {location.pathname === '/admin/dashboard' && (
+              {location.pathname === dashboardPath && (
                 <span className="absolute bottom-0 left-0 h-[2.5px] w-full rounded-full bg-[#2563EB]" />
               )}
             </Link>

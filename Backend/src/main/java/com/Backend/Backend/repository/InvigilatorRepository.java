@@ -21,6 +21,17 @@ public interface InvigilatorRepository extends JpaRepository<InvigilatorEntity, 
 
     List<InvigilatorEntity> findAllByExam_ExamId(UUID examId);
 
+    long countByUser_UserId(UUID userId);
+
+    void deleteAllByExam_ExamId(UUID examId);
+
+    // One person's invigilation roster, earliest duty first
+    @Query("SELECT i FROM InvigilatorEntity i " +
+            "JOIN FETCH i.exam e JOIN FETCH e.module JOIN FETCH e.batch " +
+            "WHERE i.user.userId = :userId AND UPPER(e.status) <> 'CANCELLED' " +
+            "ORDER BY e.examDate ASC, e.startTime ASC")
+    List<InvigilatorEntity> findMyDuties(@Param("userId") UUID userId);
+
     /**
      * Finds other exams where this person is already on duty at an overlapping time.
      * Keeps one invigilator from being booked into two halls at once.

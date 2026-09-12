@@ -311,6 +311,14 @@ public class TimetableSessionService {
         return value != null && !value.trim().isEmpty();
     }
 
+    /**
+     * Shared with the student and lecturer portals, so one mapping serves every view
+     * and a session reads the same wherever it appears.
+     */
+    public List<TimetableSessionResponseDto> toDtos(List<TimetableSessionEntity> sessions) {
+        return sessions.stream().map(this::mapToDto).toList();
+    }
+
     // Entity to response DTO
     private TimetableSessionResponseDto mapToDto(TimetableSessionEntity session) {
         BatchEntity batch = session.getBatch();

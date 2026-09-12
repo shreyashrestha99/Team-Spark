@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Navbar } from '../components/Navbar'
-import { useAuth } from '../context/Auth'
+import { homePathFor, useAuth } from '../context/Auth'
 import {
   Calendar,
   FileText,
@@ -18,15 +18,16 @@ import {
 } from 'lucide-react'
 
 export default function HomePage() {
-  const { user, isAdmin } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   // Admin users are locked to dashboard - redirect them
   useEffect(() => {
-    if (user && isAdmin) {
-      navigate('/admin/dashboard', { replace: true })
+    const home = homePathFor(user?.role)
+    if (user && home !== '/') {
+      navigate(home, { replace: true })
     }
-  }, [user, isAdmin, navigate])
+  }, [user, navigate])
 
   return (
     <div className="min-h-screen bg-[#FAFCFF] text-[#1E293B]">

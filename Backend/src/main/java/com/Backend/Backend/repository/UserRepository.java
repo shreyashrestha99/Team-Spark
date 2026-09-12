@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,4 +46,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     );
 
     long countByRole_RoleName(RoleEnum roleName);
+
+    // Everyone eligible for invigilation duty
+    List<UserEntity> findAllByRole_RoleNameAndIsActiveTrue(RoleEnum roleName);
 }

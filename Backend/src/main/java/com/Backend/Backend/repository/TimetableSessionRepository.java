@@ -87,6 +87,50 @@ public interface TimetableSessionRepository extends JpaRepository<TimetableSessi
             @Param("toDate") LocalDate toDate
     );
 
+    /**
+     * One student's own timetable: every whole-batch lecture plus the tutorials and
+     * workshops of their group, and none of the other groups' sessions.
+     */
+    @Query("SELECT s FROM TimetableSessionEntity s " +
+            "JOIN FETCH s.room JOIN FETCH s.teacher JOIN FETCH s.module JOIN FETCH s.batch " +
+            "LEFT JOIN FETCH s.studentGroup LEFT JOIN FETCH s.timeSlot " +
+            "WHERE s.batch.batchId = :batchId AND " +
+            "(s.studentGroup IS NULL OR :groupId IS NULL OR s.studentGroup.groupId = :groupId) AND " +
+            "s.sessionDate BETWEEN :fromDate AND :toDate AND " +
+            "UPPER(s.status) <> 'CANCELLED' " +
+            "ORDER BY s.sessionDate ASC, s.startTime ASC")
+    List<TimetableSessionEntity> findStudentRoutine(
+            @Param("batchId") UUID batchId,
+            @Param("groupId") UUID groupId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
+    // Everything one lecturer teaches in a window, ready to render
+    @Query("SELECT s FROM TimetableSessionEntity s " +
+            "JOIN FETCH s.room JOIN FETCH s.teacher JOIN FETCH s.module JOIN FETCH s.batch " +
+            "LEFT JOIN FETCH s.studentGroup LEFT JOIN FETCH s.timeSlot " +
+            "WHERE s.teacher.teacherId = :teacherId AND " +
+            "s.sessionDate BETWEEN :fromDate AND :toDate AND " +
+            "UPPER(s.status) <> 'CANCELLED' " +
+            "ORDER BY s.sessionDate ASC, s.startTime ASC")
+    List<TimetableSessionEntity> findTeacherRoutine(
+            @Param("teacherId") UUID teacherId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
+    // Lecturers standing in front of a class at that moment, so they are never rostered
+    @Query("SELECT DISTINCT s.teacher.user.userId FROM TimetableSessionEntity s WHERE " +
+            "s.sessionDate = :date AND " +
+            "s.startTime < :endTime AND s.endTime > :startTime AND " +
+            "UPPER(s.status) <> 'CANCELLED'")
+    List<UUID> findTeacherUserIdsBusyAt(
+            @Param("date") LocalDate date,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
+    );
+
     // Rooms tied up by a class at that moment, so an exam is never put in one
     @Query("SELECT DISTINCT s.room.roomId FROM TimetableSessionEntity s WHERE " +
             "s.sessionDate = :date AND " +

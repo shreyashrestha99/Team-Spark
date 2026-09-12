@@ -3,6 +3,7 @@ package com.Backend.Backend.config;
 import com.Backend.Backend.dto.ApiResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -27,6 +28,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponseDto<Void>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponseDto.error(ex.getMessage()));
+    }
+
+    // 403 — signed in, but the role cannot reach this endpoint.
+    // Without this the catch-all below turns a refused role into a 500.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponseDto<Void>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponseDto.error("You do not have access to this resource"));
     }
 
     // 403 — action not allowed

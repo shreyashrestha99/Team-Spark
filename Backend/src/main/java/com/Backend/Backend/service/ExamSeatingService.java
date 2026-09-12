@@ -7,14 +7,19 @@ import com.Backend.Backend.entity.BuildingEntity;
 import com.Backend.Backend.entity.ExamEntity;
 import com.Backend.Backend.entity.ExamRoomEntity;
 import com.Backend.Backend.entity.RoomEntity;
+import com.Backend.Backend.entity.InvigilatorEntity;
 import com.Backend.Backend.entity.SeatAllocationEntity;
 import com.Backend.Backend.entity.StudentEntity;
+import com.Backend.Backend.entity.UserEntity;
+import com.Backend.Backend.enums.RoleEnum;
 import com.Backend.Backend.repository.ExamRepository;
 import com.Backend.Backend.repository.ExamRoomRepository;
+import com.Backend.Backend.repository.InvigilatorRepository;
 import com.Backend.Backend.repository.RoomRepository;
 import com.Backend.Backend.repository.SeatAllocationRepository;
 import com.Backend.Backend.repository.StudentRepository;
 import com.Backend.Backend.repository.TimetableSessionRepository;
+import com.Backend.Backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,12 +49,17 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ExamSeatingService {
 
+    // One invigilator covers roughly this many candidates, on top of one per hall
+    private static final int CANDIDATES_PER_INVIGILATOR = 30;
+
     private final ExamRepository examRepository;
     private final ExamRoomRepository examRoomRepository;
     private final SeatAllocationRepository seatAllocationRepository;
     private final RoomRepository roomRepository;
     private final StudentRepository studentRepository;
     private final TimetableSessionRepository sessionRepository;
+    private final InvigilatorRepository invigilatorRepository;
+    private final UserRepository userRepository;
 
     /**
      * Allocates halls and seats for one exam, replacing anything already allocated to it.
@@ -85,6 +95,7 @@ public class ExamSeatingService {
         }
 
         int seated = seatCandidates(exam, halls, candidates, remaining);
+        assignInvigilators(exam, warnings);
 
         if (seated < candidates.size()) {
             warnings.add((candidates.size() - seated) + " candidate(s) have no desk. "
@@ -140,9 +151,70 @@ public class ExamSeatingService {
 
     private void clearAllocations(ExamEntity exam) {
         seatAllocationRepository.deleteAllByExam_ExamId(exam.getExamId());
+        invigilatorRepository.deleteAllByExam_ExamId(exam.getExamId());
         examRoomRepository.deleteAllByExam_ExamId(exam.getExamId());
         seatAllocationRepository.flush();
+        invigilatorRepository.flush();
         examRoomRepository.flush();
+    }
+
+    /**
+     * Rosters invigilators: one per hall plus one for every thirty candidates.
+     *
+     * Duties go to whoever is carrying the fewest so far, which spreads the load instead
+     * of piling it on whoever appears first in the list. Anyone teaching a class at that
+     * hour, or already invigilating an overlapping exam, is skipped entirely.
+     */
+    private void assignInvigilators(ExamEntity exam, List<String> warnings) {
+        List<ExamRoomEntity> examRooms = examRoomRepository.findAllByExam_ExamId(exam.getExamId());
+        if (examRooms.isEmpty()) {
+            return;
+        }
+
+        int candidates = examRooms.stream()
+                .mapToInt(room -> room.getAllocatedCapacity() != null ? room.getAllocatedCapacity() : 0)
+                .sum();
+
+        int needed = examRooms.size()
+                + (int) Math.ceil((double) candidates / CANDIDATES_PER_INVIGILATOR);
+
+        Set<UUID> teachingNow = new HashSet<>(sessionRepository.findTeacherUserIdsBusyAt(
+                exam.getExamDate(), exam.getStartTime(), exam.getEndTime()));
+
+        // Least-loaded first, so the roster stays even across the exam season
+        List<UserEntity> eligible = userRepository
+                .findAllByRole_RoleNameAndIsActiveTrue(RoleEnum.ROLE_TEACHER).stream()
+                .filter(user -> !teachingNow.contains(user.getUserId()))
+                .filter(user -> invigilatorRepository.findDutyClashes(
+                        user.getUserId(), exam.getExamId(), exam.getExamDate(),
+                        exam.getStartTime(), exam.getEndTime()).isEmpty())
+                .sorted(Comparator.comparingLong(
+                        user -> invigilatorRepository.countByUser_UserId(user.getUserId())))
+                .toList();
+
+        if (eligible.isEmpty()) {
+            warnings.add("No lecturer is free to invigilate at this time, so no duty roster was created.");
+            return;
+        }
+
+        int assigned = Math.min(needed, eligible.size());
+        List<InvigilatorEntity> roster = new ArrayList<>();
+
+        for (int index = 0; index < assigned; index++) {
+            roster.add(InvigilatorEntity.builder()
+                    .exam(exam)
+                    .user(eligible.get(index))
+                    // The lightest loaded person takes charge of the sitting
+                    .role(index == 0 ? "CHIEF" : "INVIGILATOR")
+                    .build());
+        }
+
+        invigilatorRepository.saveAll(roster);
+
+        if (assigned < needed) {
+            warnings.add(examRooms.size() + " hall(s) and " + candidates + " candidate(s) need "
+                    + needed + " invigilator(s), but only " + assigned + " were free.");
+        }
     }
 
     /**
