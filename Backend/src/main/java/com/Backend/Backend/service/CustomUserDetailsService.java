@@ -13,6 +13,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    // Spring Security lookup by username or email
     @Override
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
         return userRepository.findByUsernameOrEmail(usernameOrEmail)

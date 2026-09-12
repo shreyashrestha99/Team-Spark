@@ -15,24 +15,28 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // 401 — bad login credentials
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponseDto<Void>> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponseDto.error(ex.getMessage()));
     }
 
+    // 400 — invalid input value
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponseDto<Void>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponseDto.error(ex.getMessage()));
     }
 
+    // 403 — action not allowed
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponseDto<Void>> handleIllegalState(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponseDto.error(ex.getMessage()));
     }
 
+    // 400 — bean validation errors
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponseDto<Map<String, String>>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -49,6 +53,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    // 500 — catch-all fallback
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponseDto<Void>> handleGlobalException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

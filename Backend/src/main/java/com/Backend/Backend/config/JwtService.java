@@ -23,6 +23,7 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
+    // Read subject (username) from token
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -58,6 +59,7 @@ public class JwtService {
                 .compact();
     }
 
+    // Check owner match and expiry
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);

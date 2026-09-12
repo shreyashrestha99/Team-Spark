@@ -20,18 +20,21 @@ public class AuthController {
 
     private final AuthService authService;
 
+    // Authenticate and issue JWT
     @PostMapping("/login")
     public ResponseEntity<ApiResponseDto<AuthResponseDto>> login(@Valid @RequestBody LoginRequestDto request) {
         AuthResponseDto response = authService.login(request);
         return ResponseEntity.ok(ApiResponseDto.success("Login successful", response));
     }
 
+    // Clear the security context
     @PostMapping("/logout")
     public ResponseEntity<ApiResponseDto<Void>> logout() {
         authService.logout();
         return ResponseEntity.ok(ApiResponseDto.success("Logged out successfully"));
     }
 
+    // Return the logged-in user
     @GetMapping("/me")
     public ResponseEntity<ApiResponseDto<UserResponseDto>> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {

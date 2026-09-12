@@ -23,6 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
 
+    // Authenticate each request from its Bearer token
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -33,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String username;
 
+        // No token: continue as anonymous
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;

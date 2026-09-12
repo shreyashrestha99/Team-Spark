@@ -33,6 +33,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
+    // Stateless JWT security rules
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -74,6 +75,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // Allow the frontend to call the API
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

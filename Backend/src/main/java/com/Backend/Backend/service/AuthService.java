@@ -25,6 +25,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
 
+    // Verify credentials, return token + user
     public AuthResponseDto login(LoginRequestDto request) {
         UserEntity user = userRepository.findByUsernameOrEmail(request.getUsernameOrEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid username/email or password"));
@@ -44,16 +45,19 @@ public class AuthService {
         return generateAuthResponse(user);
     }
 
+    // Stateless logout: drop context
     public void logout() {
         SecurityContextHolder.clearContext();
     }
 
+    // Load profile for /auth/me
     public UserResponseDto getCurrentUserProfile(String username) {
         UserEntity user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
         return userService.mapToUserResponseDto(user);
     }
 
+    // Build signed token + profile
     private AuthResponseDto generateAuthResponse(UserEntity user) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("userId", user.getUserId());

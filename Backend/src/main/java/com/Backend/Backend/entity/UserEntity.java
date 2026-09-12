@@ -9,6 +9,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -34,13 +35,13 @@ public class UserEntity implements UserDetails {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
-    @Column(name = "username", unique = true, nullable = false, length = 50)
+    @Column(name = "username", nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(name = "email", unique = true, nullable = false, length = 100)
+    @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(name = "password", nullable = false, length = 255)
+    @Column(name = "password", nullable = false)
     private String password;
 
     @Column(name = "phone_number", length = 20)
@@ -51,13 +52,27 @@ public class UserEntity implements UserDetails {
     private Boolean isActive = true;
 
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private StudentEntity student;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private TeacherEntity teacher;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private StaffEntity staff;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<InvigilatorEntity> invigilations = new ArrayList<>();
+
+    // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (role == null || role.getRoleName() == null) {
@@ -68,12 +83,12 @@ public class UserEntity implements UserDetails {
 
     @Override
     public String getPassword() {
-        return password;
+        return this.password;
     }
 
     @Override
     public String getUsername() {
-        return username;
+        return this.username;
     }
 
     @Override
@@ -93,6 +108,6 @@ public class UserEntity implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return Boolean.TRUE.equals(isActive);
+        return Boolean.TRUE.equals(this.isActive);
     }
 }
