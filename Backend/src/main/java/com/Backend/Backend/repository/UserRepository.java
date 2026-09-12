@@ -1,6 +1,9 @@
 package com.Backend.Backend.repository;
 
 import com.Backend.Backend.entity.UserEntity;
+import com.Backend.Backend.enums.RoleEnum;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,4 +25,21 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     boolean existsByUsernameIgnoreCase(String username);
 
     boolean existsByEmailIgnoreCase(String email);
+
+    Page<UserEntity> findByRole_RoleName(RoleEnum roleName, Pageable pageable);
+
+    @Query("SELECT u FROM UserEntity u WHERE u.role.roleName = :roleName AND (LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<UserEntity> searchByRole(
+            @Param("roleName") RoleEnum roleName,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @Query("SELECT u FROM UserEntity u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<UserEntity> searchAll(
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    long countByRole_RoleName(RoleEnum roleName);
 }

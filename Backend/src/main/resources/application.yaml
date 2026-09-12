@@ -1,10 +1,13 @@
+server:
+  port: 8081
+
 spring:
   application:
     name: Backend
   datasource:
     url: jdbc:postgresql://localhost:5432/Team Spark
     username: postgres
-    password: admin123
+    password: kritika
     driver-class-name: org.postgresql.Driver
   jpa:
     open-in-view: false

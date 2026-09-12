@@ -24,6 +24,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         seedRoles();
         seedDefaultAdmin();
+        seedSampleUsers();
     }
 
     private void seedRoles() {
@@ -56,6 +57,69 @@ public class DataInitializer implements CommandLineRunner {
 
             userRepository.save(admin);
             log.info("Default Admin account created: username 'admin', password 'admin123'");
+        }
+    }
+
+    private void seedSampleUsers() {
+        if (userRepository.count() <= 1) {
+            RoleEntity studentRole = roleRepository.findByRoleName(RoleEnum.ROLE_STUDENT).orElse(null);
+            RoleEntity teacherRole = roleRepository.findByRoleName(RoleEnum.ROLE_TEACHER).orElse(null);
+            RoleEntity staffRole = roleRepository.findByRoleName(RoleEnum.ROLE_STAFF).orElse(null);
+
+            if (studentRole != null) {
+                userRepository.save(UserEntity.builder()
+                        .fullName("Aarav Sharma")
+                        .username("aarav.sharma")
+                        .email("aarav@islington.edu.np")
+                        .password(passwordEncoder.encode("student123"))
+                        .phoneNumber("+977-9811122334")
+                        .role(studentRole)
+                        .isActive(true)
+                        .build());
+                userRepository.save(UserEntity.builder()
+                        .fullName("Pooja Shrestha")
+                        .username("pooja.shrestha")
+                        .email("pooja@islington.edu.np")
+                        .password(passwordEncoder.encode("student123"))
+                        .phoneNumber("+977-9844455667")
+                        .role(studentRole)
+                        .isActive(true)
+                        .build());
+            }
+
+            if (teacherRole != null) {
+                userRepository.save(UserEntity.builder()
+                        .fullName("Dr. Ramesh Adhikari")
+                        .username("ramesh.adhikari")
+                        .email("ramesh@islingtoncollege.edu.np")
+                        .password(passwordEncoder.encode("teacher123"))
+                        .phoneNumber("+977-9851122334")
+                        .role(teacherRole)
+                        .isActive(true)
+                        .build());
+                userRepository.save(UserEntity.builder()
+                        .fullName("Er. Sunita Karki")
+                        .username("sunita.karki")
+                        .email("sunita@islingtoncollege.edu.np")
+                        .password(passwordEncoder.encode("teacher123"))
+                        .phoneNumber("+977-9852233445")
+                        .role(teacherRole)
+                        .isActive(true)
+                        .build());
+            }
+
+            if (staffRole != null) {
+                userRepository.save(UserEntity.builder()
+                        .fullName("Bikash Maharjan")
+                        .username("bikash.maharjan")
+                        .email("bikash.rte@islingtoncollege.edu.np")
+                        .password(passwordEncoder.encode("staff123"))
+                        .phoneNumber("+977-9863344556")
+                        .role(staffRole)
+                        .isActive(true)
+                        .build());
+            }
+            log.info("Sample students, teachers, and staff seeded successfully");
         }
     }
 }
