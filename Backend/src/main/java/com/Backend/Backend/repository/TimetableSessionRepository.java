@@ -36,7 +36,8 @@ public interface TimetableSessionRepository extends JpaRepository<TimetableSessi
             @Param("excludeId") UUID excludeId
     );
 
-    // Combined timetable list with every filter optional
+    // Combined timetable list with every filter optional.
+    // Status uses "" rather than null so Postgres can type the parameter.
     @Query("SELECT s FROM TimetableSessionEntity s WHERE " +
             "(:batchId IS NULL OR s.batch.batchId = :batchId) AND " +
             "(:moduleId IS NULL OR s.module.moduleId = :moduleId) AND " +
@@ -44,7 +45,7 @@ public interface TimetableSessionRepository extends JpaRepository<TimetableSessi
             "(:roomId IS NULL OR s.room.roomId = :roomId) AND " +
             "(:fromDate IS NULL OR s.sessionDate >= :fromDate) AND " +
             "(:toDate IS NULL OR s.sessionDate <= :toDate) AND " +
-            "(:status IS NULL OR UPPER(s.status) = UPPER(:status))")
+            "(:status = '' OR UPPER(s.status) = UPPER(:status))")
     Page<TimetableSessionEntity> searchSessions(
             @Param("batchId") UUID batchId,
             @Param("moduleId") UUID moduleId,

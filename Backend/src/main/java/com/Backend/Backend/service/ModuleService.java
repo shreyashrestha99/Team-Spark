@@ -59,9 +59,9 @@ public class ModuleService {
                 : Sort.by(sortBy).ascending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
-        String term = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        Page<ModuleEntity> result = moduleRepository.searchModules(term, yearOfStudy, semester, pageable);
+        Page<ModuleEntity> result =
+                moduleRepository.searchModules(blankIfNull(search), yearOfStudy, semester, pageable);
         return PageResponseDto.from(result.map(this::mapToDto));
     }
 
@@ -121,6 +121,11 @@ public class ModuleService {
         }
 
         moduleRepository.delete(module);
+    }
+
+    // Empty string keeps the query parameter typed
+    private String blankIfNull(String value) {
+        return value == null ? "" : value.trim();
     }
 
     // Shared lookup with a clear error

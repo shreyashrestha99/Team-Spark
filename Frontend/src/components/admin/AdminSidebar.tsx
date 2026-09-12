@@ -1,26 +1,11 @@
-import {
-  GraduationCap,
-  Briefcase,
-  UserCog,
-  ChevronLeft,
-  LayoutDashboard,
-  LogOut,
-  DoorOpen,
-  BarChart3,
-} from 'lucide-react'
+import { ChevronLeft, LayoutDashboard, LogOut } from 'lucide-react'
 import { IslingtonLogo } from '../IslingtonLogo'
-import { initialsOf, type ActiveTab, type DashboardStats } from './types'
-
-// Role tabs listed under User Management
-const sidebarItems = [
-  { id: 'STUDENTS' as ActiveTab, label: 'Students', statKey: 'students' as const, icon: GraduationCap, color: 'text-[#2563EB]', bg: 'bg-[#EFF6FF]' },
-  { id: 'TEACHERS' as ActiveTab, label: 'Teachers', statKey: 'teachers' as const, icon: Briefcase, color: 'text-[#059669]', bg: 'bg-[#ECFDF5]' },
-  { id: 'STAFF' as ActiveTab, label: 'Staff', statKey: 'staff' as const, icon: UserCog, color: 'text-[#7C3AED]', bg: 'bg-[#F5F3FF]' },
-]
+import { initialsOf, type DashboardStats } from './types'
+import { NAV_GROUPS, type AdminView } from './navigation'
 
 interface Props {
-  activeTab: ActiveTab
-  onTabChange: (tab: ActiveTab) => void
+  activeView: AdminView
+  onViewChange: (view: AdminView) => void
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
   stats: DashboardStats | null
@@ -30,8 +15,8 @@ interface Props {
 }
 
 export function AdminSidebar({
-  activeTab,
-  onTabChange,
+  activeView,
+  onViewChange,
   collapsed,
   onCollapsedChange,
   stats,
@@ -46,7 +31,7 @@ export function AdminSidebar({
       }`}
     >
       {/* Logo / brand */}
-      <div className="flex h-[72px] items-center border-b border-[#E2E8F0] px-4">
+      <div className="flex h-[72px] shrink-0 items-center border-b border-[#E2E8F0] px-4">
         {collapsed ? (
           <button
             onClick={() => onCollapsedChange(false)}
@@ -75,100 +60,58 @@ export function AdminSidebar({
         )}
       </div>
 
+      {/* Grouped navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {!collapsed && (
-          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
-            Overview
-          </p>
-        )}
-        <button
-          onClick={() => onTabChange('STUDENTS')}
-          className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition cursor-pointer ${
-            activeTab === 'STUDENTS'
-              ? 'bg-[#2563EB] text-white shadow-md shadow-[#2563EB]/20'
-              : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
-          }`}
-          title="Dashboard"
-        >
-          <LayoutDashboard className="h-5 w-5 shrink-0" />
-          {!collapsed && <span>Dashboard</span>}
-        </button>
+        {NAV_GROUPS.map((group, groupIndex) => (
+          <div key={group.heading}>
+            {!collapsed ? (
+              <p className={`mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] ${
+                groupIndex === 0 ? '' : 'mt-6'
+              }`}>
+                {group.heading}
+              </p>
+            ) : (
+              groupIndex > 0 && <div className="my-3 border-t border-[#F1F5F9]" />
+            )}
 
-        {!collapsed && (
-          <p className="mb-2 mt-6 px-3 text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
-            User Management
-          </p>
-        )}
-        {collapsed && <div className="my-3 border-t border-[#F1F5F9]" />}
+            {group.items.map((item) => {
+              const Icon = item.icon
+              const isActive = activeView === item.id
+              const count = item.statKey ? stats?.[item.statKey] : undefined
 
-        {sidebarItems.map((item) => {
-          const Icon = item.icon
-          const isActive = activeTab === item.id
-          return (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition cursor-pointer ${
-                isActive
-                  ? 'bg-[#F8FAFC] text-[#1E293B] shadow-sm ring-1 ring-[#E2E8F0]'
-                  : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
-              }`}
-              title={item.label}
-            >
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isActive ? item.bg : ''}`}>
-                <Icon className={`h-4.5 w-4.5 ${isActive ? item.color : ''}`} />
-              </div>
-              {!collapsed && (
-                <div className="flex flex-1 items-center justify-between">
-                  <span>{item.label}</span>
-                  <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                    isActive ? 'bg-white text-[#1E293B]' : 'bg-[#F1F5F9] text-[#94A3B8]'
-                  }`}>
-                    {stats?.[item.statKey] ?? '—'}
-                  </span>
-                </div>
-              )}
-            </button>
-          )
-        })}
-
-        {collapsed && <div className="my-3 border-t border-[#F1F5F9]" />}
-        {!collapsed && (
-          <p className="mb-2 mt-6 px-3 text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
-            Resources
-          </p>
-        )}
-
-        <button
-          className="mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#64748B] transition cursor-pointer hover:bg-[#F8FAFC] hover:text-[#1E293B]"
-          title="Rooms"
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-            <DoorOpen className="h-4.5 w-4.5" />
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onViewChange(item.id)}
+                  className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition cursor-pointer ${
+                    isActive
+                      ? 'bg-[#2563EB] text-white shadow-md shadow-[#2563EB]/20'
+                      : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
+                  }`}
+                  title={item.label}
+                >
+                  <Icon className="h-4.5 w-4.5 shrink-0" />
+                  {!collapsed && (
+                    <div className="flex flex-1 items-center justify-between">
+                      <span className="truncate">{item.label}</span>
+                      {count !== undefined && (
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-[#F1F5F9] text-[#94A3B8]'
+                        }`}>
+                          {count}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
           </div>
-          {!collapsed && (
-            <div className="flex flex-1 items-center justify-between">
-              <span>Rooms</span>
-              <span className="rounded-md bg-[#F1F5F9] px-2 py-0.5 text-[11px] font-semibold text-[#94A3B8]">
-                {stats?.rooms ?? '—'}
-              </span>
-            </div>
-          )}
-        </button>
-
-        <button
-          className="mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#64748B] transition cursor-pointer hover:bg-[#F8FAFC] hover:text-[#1E293B]"
-          title="Reports"
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-            <BarChart3 className="h-4.5 w-4.5" />
-          </div>
-          {!collapsed && <span>Reports</span>}
-        </button>
+        ))}
       </nav>
 
       {/* Admin profile + logout */}
-      <div className="border-t border-[#E2E8F0] p-3">
+      <div className="shrink-0 border-t border-[#E2E8F0] p-3">
         {collapsed ? (
           <button
             onClick={onLogout}

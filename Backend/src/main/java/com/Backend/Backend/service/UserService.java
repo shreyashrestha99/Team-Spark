@@ -2,6 +2,7 @@ package com.Backend.Backend.service;
 
 import com.Backend.Backend.dto.PageResponseDto;
 import com.Backend.Backend.dto.user.CreateUserRequestDto;
+import com.Backend.Backend.dto.user.UpdateUserRequestDto;
 import com.Backend.Backend.dto.user.UserResponseDto;
 import com.Backend.Backend.entity.BatchEntity;
 import com.Backend.Backend.entity.RoleEntity;
@@ -12,6 +13,7 @@ import com.Backend.Backend.entity.UserEntity;
 import com.Backend.Backend.enums.RoleEnum;
 import com.Backend.Backend.repository.BatchRepository;
 import com.Backend.Backend.repository.RoleRepository;
+import com.Backend.Backend.repository.RoomRepository;
 import com.Backend.Backend.repository.StaffRepository;
 import com.Backend.Backend.repository.StudentRepository;
 import com.Backend.Backend.repository.TeacherRepository;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +42,7 @@ public class UserService {
     private final TeacherRepository teacherRepository;
     private final StaffRepository staffRepository;
     private final BatchRepository batchRepository;
+    private final RoomRepository roomRepository;
     private final PasswordEncoder passwordEncoder;
 
     // Create user + student record
@@ -168,6 +172,134 @@ public class UserService {
         return PageResponseDto.from(dtoPage);
     }
 
+    // Fetch one user by id
+    @Transactional(readOnly = true)
+    public UserResponseDto getById(UUID userId) {
+        return mapToUserResponseDto(findOrThrow(userId));
+    }
+
+    // Update account + role-specific details
+    @Transactional
+    public UserResponseDto update(UUID userId, UpdateUserRequestDto request) {
+        UserEntity user = findOrThrow(userId);
+        String email = request.getEmail().toLowerCase().trim();
+
+        if (userRepository.existsByEmailIgnoreCaseAndUserIdNot(email, userId)) {
+            throw new IllegalArgumentException("Email '" + email + "' is already registered");
+        }
+
+        user.setFullName(request.getFullName().trim());
+        user.setEmail(email);
+        user.setPhoneNumber(trimOrNull(request.getPhoneNumber()));
+        if (request.getIsActive() != null) {
+            user.setIsActive(request.getIsActive());
+        }
+        if (hasText(request.getPassword())) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        if (user.getStudent() != null) {
+            updateStudent(user.getStudent(), request);
+        }
+        if (user.getTeacher() != null) {
+            applyDepartmentAndDesignation(request, user.getTeacher()::setDepartment, user.getTeacher()::setDesignation);
+        }
+        if (user.getStaff() != null) {
+            applyDepartmentAndDesignation(request, user.getStaff()::setDepartment, user.getStaff()::setDesignation);
+        }
+
+        return mapToUserResponseDto(userRepository.save(user));
+    }
+
+    // Delete when nothing depends on the account
+    @Transactional
+    public void delete(UUID userId, String currentUsername) {
+        UserEntity user = findOrThrow(userId);
+
+        if (user.getUsername().equalsIgnoreCase(currentUsername)) {
+            throw new IllegalArgumentException("You cannot delete your own account");
+        }
+
+        if (user.getRole() != null && user.getRole().getRoleName() == RoleEnum.ROLE_ADMIN) {
+            throw new IllegalArgumentException("Admin accounts cannot be deleted");
+        }
+
+        if (user.getTeacher() != null) {
+            int sessions = user.getTeacher().getTimetableSessions().size();
+            if (sessions > 0) {
+                throw new IllegalArgumentException(
+                        "Cannot delete: teacher still has " + sessions + " timetable session(s). Reassign them first."
+                );
+            }
+        }
+
+        if (user.getStudent() != null) {
+            int seats = user.getStudent().getSeatAllocations().size();
+            if (seats > 0) {
+                throw new IllegalArgumentException(
+                        "Cannot delete: student has " + seats + " exam seat allocation(s). Clear them first."
+                );
+            }
+        }
+
+        userRepository.delete(user);
+    }
+
+    // Student number, batch and status changes
+    private void updateStudent(StudentEntity student, UpdateUserRequestDto request) {
+        if (hasText(request.getStudentNumber())) {
+            String number = request.getStudentNumber().trim();
+            if (studentRepository.existsByStudentNumberIgnoreCaseAndStudentIdNot(number, student.getStudentId())) {
+                throw new IllegalArgumentException("Student number '" + number + "' already exists");
+            }
+            student.setStudentNumber(number);
+        }
+
+        // Explicit blank clears; omitted leaves unchanged
+        if (request.getRegistrationNumber() != null) {
+            student.setRegistrationNumber(trimOrNull(request.getRegistrationNumber()));
+        }
+        if (hasText(request.getStatus())) {
+            student.setStatus(request.getStatus().trim());
+        }
+        if (request.getBatchId() != null) {
+            BatchEntity batch = batchRepository.findById(request.getBatchId())
+                    .orElseThrow(() -> new IllegalArgumentException("Selected batch does not exist"));
+            student.setBatch(batch);
+        }
+    }
+
+    // Shared setter logic for teacher and staff
+    private void applyDepartmentAndDesignation(
+            UpdateUserRequestDto request,
+            Consumer<String> setDepartment,
+            Consumer<String> setDesignation
+    ) {
+        if (request.getDepartment() != null) {
+            setDepartment.accept(trimOrNull(request.getDepartment()));
+        }
+        if (request.getDesignation() != null) {
+            setDesignation.accept(trimOrNull(request.getDesignation()));
+        }
+    }
+
+    // Shared lookup with a clear error
+    private UserEntity findOrThrow(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+    }
+
+    // Blank strings become null
+    private String trimOrNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
     // Top-level counts for dashboard cards
     @Transactional(readOnly = true)
     public Map<String, Object> getDashboardStats() {
@@ -179,7 +311,7 @@ public class UserService {
         stats.put("students", studentCount);
         stats.put("teachers", teacherCount);
         stats.put("staff", staffCount);
-        stats.put("rooms", 24);
+        stats.put("rooms", roomRepository.count());
         stats.put("conflicts", 0);
         return stats;
     }

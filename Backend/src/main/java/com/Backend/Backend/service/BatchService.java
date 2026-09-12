@@ -64,9 +64,8 @@ public class BatchService {
                 : Sort.by(sortBy).ascending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
-        String term = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        Page<BatchEntity> result = batchRepository.searchBatches(term, programmeId, pageable);
+        Page<BatchEntity> result = batchRepository.searchBatches(blankIfNull(search), programmeId, pageable);
         return PageResponseDto.from(result.map(this::mapToDto));
     }
 
@@ -136,6 +135,11 @@ public class BatchService {
         }
 
         batchRepository.delete(batch);
+    }
+
+    // Empty string keeps the query parameter typed
+    private String blankIfNull(String value) {
+        return value == null ? "" : value.trim();
     }
 
     // Start date must precede end date

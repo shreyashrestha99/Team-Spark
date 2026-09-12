@@ -65,8 +65,8 @@ public class RoomService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<RoomEntity> result = roomRepository.searchRooms(
-                trimOrNull(search),
-                trimOrNull(roomType),
+                blankIfNull(search),
+                blankIfNull(roomType),
                 minCapacity,
                 pageable
         );
@@ -140,6 +140,11 @@ public class RoomService {
     private RoomEntity findOrThrow(UUID roomId) {
         return roomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("Room not found: " + roomId));
+    }
+
+    // Empty string keeps the query parameter typed
+    private String blankIfNull(String value) {
+        return value == null ? "" : value.trim();
     }
 
     // Blank strings become null

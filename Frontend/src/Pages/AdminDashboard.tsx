@@ -9,6 +9,9 @@ import { StatsCards } from '../components/admin/StatsCards'
 import { UsersTable } from '../components/admin/UsersTable'
 import { AddUserModal } from '../components/admin/AddUserModal'
 import { ViewUserModal } from '../components/admin/ViewUserModal'
+import { CrudSection } from '../components/admin/crud/CrudSection'
+import { RESOURCES, type ResourceKey } from '../components/admin/resources'
+import { isUserTab, viewLabel, type AdminView } from '../components/admin/navigation'
 import {
   EMPTY_ADD_FORM,
   tabLabel,
@@ -30,15 +33,15 @@ export default function AdminDashboard() {
   const { user, isAdmin, loading: authLoading, logout } = useAuth()
   const navigate = useNavigate()
 
-  // Layout
+  // Layout and active section
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [activeView, setActiveView] = useState<AdminView>('STUDENTS')
 
   // Dashboard stats
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
 
   // Users table
-  const [activeTab, setActiveTab] = useState<ActiveTab>('STUDENTS')
   const [users, setUsers] = useState<UserProfile[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -59,6 +62,9 @@ export default function AdminDashboard() {
 
   // View-user modal
   const [viewUser, setViewUser] = useState<UserProfile | null>(null)
+
+  // Only user tabs use the users table
+  const userTab: ActiveTab | null = isUserTab(activeView) ? activeView : null
 
   // Redirect non-admins
   useEffect(() => {
@@ -95,10 +101,11 @@ export default function AdminDashboard() {
   }, [])
 
   const fetchUsers = useCallback(async () => {
+    if (!userTab) return
     setTableLoading(true)
     try {
       const params: Record<string, string | number> = {
-        role: tabToRole(activeTab),
+        role: tabToRole(userTab),
         page,
         size: PAGE_SIZE,
         sortBy,
@@ -120,7 +127,7 @@ export default function AdminDashboard() {
     } finally {
       setTableLoading(false)
     }
-  }, [activeTab, page, sortBy, sortDir, search])
+  }, [userTab, page, sortBy, sortDir, search])
 
   useEffect(() => {
     if (user && isAdmin) {
@@ -134,7 +141,7 @@ export default function AdminDashboard() {
   }, [user, isAdmin, fetchUsers])
 
   // Back to first page when the view changes
-  useEffect(() => { setPage(0) }, [activeTab, search])
+  useEffect(() => { setPage(0) }, [activeView, search])
 
   const toggleSort = (field: SortField) => {
     if (sortBy === field) {
@@ -174,12 +181,13 @@ export default function AdminDashboard() {
     if (!addForm.password) return 'Password is required'
     if (addForm.password.length < 6) return 'Password must be at least 6 characters'
     // Students must join a batch when batches exist
-    if (activeTab === 'STUDENTS' && batches.length > 0 && !addForm.batchId) return 'Please select a batch'
+    if (userTab === 'STUDENTS' && batches.length > 0 && !addForm.batchId) return 'Please select a batch'
     return null
   }
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!userTab) return
     setAddSuccess(null)
 
     const validationError = validateAddForm()
@@ -196,7 +204,7 @@ export default function AdminDashboard() {
         phoneNumber: addForm.phoneNumber.trim() || null,
       }
 
-      if (activeTab === 'STUDENTS') {
+      if (userTab === 'STUDENTS') {
         if (addForm.studentNumber.trim()) payload.studentNumber = addForm.studentNumber.trim()
         if (addForm.registrationNumber.trim()) payload.registrationNumber = addForm.registrationNumber.trim()
         if (addForm.batchId) payload.batchId = addForm.batchId
@@ -206,10 +214,10 @@ export default function AdminDashboard() {
         if (addForm.designation.trim()) payload.designation = addForm.designation.trim()
       }
 
-      const res = await api.post(tabToEndpoint(activeTab), payload)
+      const res = await api.post(tabToEndpoint(userTab), payload)
 
       if (res.data?.success) {
-        setAddSuccess(`${tabLabel(activeTab)} created successfully!`)
+        setAddSuccess(`${tabLabel(userTab)} created successfully!`)
         setAddForm(EMPTY_ADD_FORM)
         fetchUsers()
         fetchStats()
@@ -238,11 +246,13 @@ export default function AdminDashboard() {
     )
   }
 
+  const label = viewLabel(activeView)
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5F7FA]">
       <AdminSidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+        activeView={activeView}
+        onViewChange={setActiveView}
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
         stats={stats}
@@ -252,42 +262,56 @@ export default function AdminDashboard() {
       />
 
       <main className="flex-1 overflow-y-auto">
-        <AdminTopbar activeTab={activeTab} onAddClick={openAddModal} />
+        <AdminTopbar
+          title={`${label} Management`}
+          subtitle={`View and manage all ${label.toLowerCase()} records`}
+          addLabel={userTab ? tabLabel(userTab) : undefined}
+          onAddClick={userTab ? openAddModal : undefined}
+        />
 
         <div className="p-6">
           <StatsCards
             stats={stats}
             loading={statsLoading}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
+            activeTab={userTab ?? 'STUDENTS'}
+            onTabChange={setActiveView}
           />
 
-          <UsersTable
-            activeTab={activeTab}
-            users={users}
-            loading={tableLoading}
-            page={page}
-            pageSize={PAGE_SIZE}
-            totalPages={totalPages}
-            totalElements={totalElements}
-            sortBy={sortBy}
-            sortDir={sortDir}
-            search={search}
-            searchInput={searchInput}
-            onSearchInputChange={setSearchInput}
-            onSearchSubmit={(e) => { e.preventDefault(); setSearch(searchInput) }}
-            onClearSearch={() => { setSearchInput(''); setSearch('') }}
-            onRefresh={() => { fetchUsers(); fetchStats() }}
-            onToggleSort={toggleSort}
-            onPageChange={setPage}
-            onView={setViewUser}
-          />
+          {userTab ? (
+            <UsersTable
+              activeTab={userTab}
+              users={users}
+              loading={tableLoading}
+              page={page}
+              pageSize={PAGE_SIZE}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              sortBy={sortBy}
+              sortDir={sortDir}
+              search={search}
+              searchInput={searchInput}
+              onSearchInputChange={setSearchInput}
+              onSearchSubmit={(e) => { e.preventDefault(); setSearch(searchInput) }}
+              onClearSearch={() => { setSearchInput(''); setSearch('') }}
+              onRefresh={() => { fetchUsers(); fetchStats() }}
+              onToggleSort={toggleSort}
+              onPageChange={setPage}
+              onView={setViewUser}
+            />
+          ) : (
+            // Generic CRUD for every other entity
+            <CrudSection
+              key={activeView}
+              config={RESOURCES[activeView as ResourceKey].config}
+              idField={RESOURCES[activeView as ResourceKey].idField}
+            />
+          )}
         </div>
       </main>
 
-      {showAddModal && (
+      {showAddModal && userTab && (
         <AddUserModal
-          activeTab={activeTab}
+          activeTab={userTab}
           form={addForm}
           onFormChange={patchAddForm}
           batches={batches}

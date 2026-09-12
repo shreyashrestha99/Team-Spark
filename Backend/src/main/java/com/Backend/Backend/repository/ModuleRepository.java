@@ -21,9 +21,10 @@ public interface ModuleRepository extends JpaRepository<ModuleEntity, UUID> {
 
     List<ModuleEntity> findAllByIsActiveTrueOrderByModuleCodeAsc();
 
-    // Combined list, search, year and semester filter
+    // Combined list, search, year and semester filter.
+    // Search uses "" rather than null so Postgres can type the parameter.
     @Query("SELECT m FROM ModuleEntity m WHERE " +
-            "(:search IS NULL OR LOWER(m.moduleCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "(:search = '' OR LOWER(m.moduleCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "OR LOWER(m.moduleName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
             "(:yearOfStudy IS NULL OR m.yearOfStudy = :yearOfStudy) AND " +
             "(:semester IS NULL OR m.semester = :semester)")

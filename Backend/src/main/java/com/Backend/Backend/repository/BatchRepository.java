@@ -21,9 +21,10 @@ public interface BatchRepository extends JpaRepository<BatchEntity, UUID> {
     // Uniqueness check that skips the edited row
     boolean existsByBatchNameIgnoreCaseAndBatchIdNot(String batchName, UUID batchId);
 
-    // Combined list, search and programme filter
+    // Combined list, search and programme filter.
+    // Search uses "" rather than null so Postgres can type the parameter.
     @Query("SELECT b FROM BatchEntity b WHERE " +
-            "(:search IS NULL OR LOWER(b.batchName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "(:search = '' OR LOWER(b.batchName) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "OR LOWER(b.programme.programmeName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
             "(:programmeId IS NULL OR b.programme.programmeId = :programmeId)")
     Page<BatchEntity> searchBatches(

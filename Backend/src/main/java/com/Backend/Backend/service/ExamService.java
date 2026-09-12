@@ -74,7 +74,7 @@ public class ExamService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<ExamEntity> result = examRepository.searchExams(
-                batchId, moduleId, fromDate, toDate, trimOrNull(status), pageable
+                batchId, moduleId, fromDate, toDate, blankIfNull(status), pageable
         );
 
         return PageResponseDto.from(result.map(this::mapToDto));
@@ -177,6 +177,11 @@ public class ExamService {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    // Empty string keeps the query parameter typed
+    private String blankIfNull(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private boolean hasText(String value) {

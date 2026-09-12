@@ -34,13 +34,14 @@ public interface ExamRepository extends JpaRepository<ExamEntity, UUID> {
     // Blocks scheduling the same module twice for a batch
     boolean existsByBatch_BatchIdAndModule_ModuleId(UUID batchId, UUID moduleId);
 
-    // Combined exam list with every filter optional
+    // Combined exam list with every filter optional.
+    // Status uses "" rather than null so Postgres can type the parameter.
     @Query("SELECT e FROM ExamEntity e WHERE " +
             "(:batchId IS NULL OR e.batch.batchId = :batchId) AND " +
             "(:moduleId IS NULL OR e.module.moduleId = :moduleId) AND " +
             "(:fromDate IS NULL OR e.examDate >= :fromDate) AND " +
             "(:toDate IS NULL OR e.examDate <= :toDate) AND " +
-            "(:status IS NULL OR UPPER(e.status) = UPPER(:status))")
+            "(:status = '' OR UPPER(e.status) = UPPER(:status))")
     Page<ExamEntity> searchExams(
             @Param("batchId") UUID batchId,
             @Param("moduleId") UUID moduleId,

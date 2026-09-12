@@ -4,6 +4,7 @@ import com.Backend.Backend.dto.ApiResponseDto;
 import com.Backend.Backend.dto.PageResponseDto;
 import com.Backend.Backend.dto.batch.BatchResponseDto;
 import com.Backend.Backend.dto.user.CreateUserRequestDto;
+import com.Backend.Backend.dto.user.UpdateUserRequestDto;
 import com.Backend.Backend.dto.user.UserResponseDto;
 import com.Backend.Backend.enums.RoleEnum;
 import com.Backend.Backend.service.BatchService;
@@ -13,10 +14,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -77,5 +81,32 @@ public class UserController {
     public ResponseEntity<ApiResponseDto<Map<String, Object>>> getStats() {
         Map<String, Object> stats = userService.getDashboardStats();
         return ResponseEntity.ok(ApiResponseDto.success("Dashboard stats fetched successfully", stats));
+    }
+
+    // Single user by id
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponseDto<UserResponseDto>> getById(@PathVariable UUID id) {
+        UserResponseDto user = userService.getById(id);
+        return ResponseEntity.ok(ApiResponseDto.success("User fetched successfully", user));
+    }
+
+    // Update account + role details
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponseDto<UserResponseDto>> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserRequestDto request
+    ) {
+        UserResponseDto response = userService.update(id, request);
+        return ResponseEntity.ok(ApiResponseDto.success("User updated successfully", response));
+    }
+
+    // Delete a user account
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponseDto<Void>> delete(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails principal
+    ) {
+        userService.delete(id, principal != null ? principal.getUsername() : "");
+        return ResponseEntity.ok(ApiResponseDto.success("User deleted successfully"));
     }
 }

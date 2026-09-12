@@ -21,12 +21,13 @@ public interface RoomRepository extends JpaRepository<RoomEntity, UUID> {
 
     List<RoomEntity> findAllByIsAvailableTrueOrderByRoomCodeAsc();
 
-    // Combined list, search, type and capacity filter
+    // Combined list, search, type and capacity filter.
+    // Text filters use "" rather than null so Postgres can type the parameters.
     @Query("SELECT r FROM RoomEntity r WHERE " +
-            "(:search IS NULL OR LOWER(r.roomCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "(:search = '' OR LOWER(r.roomCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "OR LOWER(r.roomName) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "OR LOWER(r.building) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
-            "(:roomType IS NULL OR LOWER(r.roomType) = LOWER(:roomType)) AND " +
+            "(:roomType = '' OR LOWER(r.roomType) = LOWER(:roomType)) AND " +
             "(:minCapacity IS NULL OR r.capacity >= :minCapacity)")
     Page<RoomEntity> searchRooms(
             @Param("search") String search,

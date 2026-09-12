@@ -82,7 +82,7 @@ public class TimetableSessionService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<TimetableSessionEntity> result = sessionRepository.searchSessions(
-                batchId, moduleId, teacherId, roomId, fromDate, toDate, trimOrNull(status), pageable
+                batchId, moduleId, teacherId, roomId, fromDate, toDate, blankIfNull(status), pageable
         );
 
         return PageResponseDto.from(result.map(this::mapToDto));
@@ -248,6 +248,11 @@ public class TimetableSessionService {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    // Empty string keeps the query parameter typed
+    private String blankIfNull(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private boolean hasText(String value) {

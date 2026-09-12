@@ -20,6 +20,9 @@ public interface StudentRepository extends JpaRepository<StudentEntity, UUID> {
 
     boolean existsByStudentNumberIgnoreCase(String studentNumber);
 
+    // Uniqueness check that skips the edited row
+    boolean existsByStudentNumberIgnoreCaseAndStudentIdNot(String studentNumber, UUID studentId);
+
     @Query("SELECT s FROM StudentEntity s WHERE " +
             "LOWER(s.user.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(s.user.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

@@ -26,6 +26,9 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
     boolean existsByEmailIgnoreCase(String email);
 
+    // Uniqueness check that skips the edited row
+    boolean existsByEmailIgnoreCaseAndUserIdNot(String email, UUID userId);
+
     Page<UserEntity> findByRole_RoleName(RoleEnum roleName, Pageable pageable);
 
     @Query("SELECT u FROM UserEntity u WHERE u.role.roleName = :roleName AND (LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
