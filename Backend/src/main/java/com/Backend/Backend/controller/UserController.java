@@ -6,6 +6,7 @@ import com.Backend.Backend.dto.batch.BatchResponseDto;
 import com.Backend.Backend.dto.user.CreateUserRequestDto;
 import com.Backend.Backend.dto.user.UserResponseDto;
 import com.Backend.Backend.enums.RoleEnum;
+import com.Backend.Backend.service.BatchService;
 import com.Backend.Backend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final BatchService batchService;
 
     // Create a student account
     @PostMapping("/student")
@@ -63,10 +65,10 @@ public class UserController {
         return ResponseEntity.ok(ApiResponseDto.success("Users fetched successfully", users));
     }
 
-    // Active batches for the dropdown
+    // Active batches for the student form
     @GetMapping("/batches")
     public ResponseEntity<ApiResponseDto<List<BatchResponseDto>>> getBatches() {
-        List<BatchResponseDto> batches = userService.getBatches();
+        List<BatchResponseDto> batches = batchService.getActive();
         return ResponseEntity.ok(ApiResponseDto.success("Batches fetched successfully", batches));
     }
 

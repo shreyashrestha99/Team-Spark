@@ -1,7 +1,6 @@
 package com.Backend.Backend.service;
 
 import com.Backend.Backend.dto.PageResponseDto;
-import com.Backend.Backend.dto.batch.BatchResponseDto;
 import com.Backend.Backend.dto.user.CreateUserRequestDto;
 import com.Backend.Backend.dto.user.UserResponseDto;
 import com.Backend.Backend.entity.BatchEntity;
@@ -27,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -168,39 +166,6 @@ public class UserService {
         Page<UserResponseDto> dtoPage = userPage.map(this::mapToUserResponseDto);
 
         return PageResponseDto.from(dtoPage);
-    }
-
-    // Active batches for the selector
-    @Transactional(readOnly = true)
-    public List<BatchResponseDto> getBatches() {
-        return batchRepository.findAllByIsActiveTrueOrderByBatchNameAsc().stream()
-                .map(this::mapToBatchResponseDto)
-                .toList();
-    }
-
-    private BatchResponseDto mapToBatchResponseDto(BatchEntity batch) {
-        String programmeName = batch.getProgramme() != null ? batch.getProgramme().getProgrammeName() : null;
-        String programmeCode = batch.getProgramme() != null ? batch.getProgramme().getProgrammeCode() : null;
-
-        StringBuilder label = new StringBuilder(batch.getBatchName());
-        if (batch.getYearOfStudy() != null) {
-            label.append(" — Year ").append(batch.getYearOfStudy());
-        }
-        if (batch.getSemester() != null) {
-            label.append(" / Sem ").append(batch.getSemester());
-        }
-
-        return BatchResponseDto.builder()
-                .batchId(batch.getBatchId())
-                .batchName(batch.getBatchName())
-                .yearOfStudy(batch.getYearOfStudy())
-                .semester(batch.getSemester())
-                .isActive(batch.getIsActive())
-                .programmeId(batch.getProgramme() != null ? batch.getProgramme().getProgrammeId() : null)
-                .programmeName(programmeName)
-                .programmeCode(programmeCode)
-                .label(label.toString())
-                .build();
     }
 
     // Top-level counts for dashboard cards
