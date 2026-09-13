@@ -15,6 +15,7 @@ import { PortalLayout, type PortalTab } from '../components/portal/PortalLayout'
 import { WeekRoutine } from '../components/portal/WeekRoutine'
 import { StatTile, TodayClasses } from '../components/portal/PortalWidgets'
 import { DutyCard } from '../components/portal/DutyCard'
+import { PortalAnalytics } from '../components/portal/PortalAnalytics'
 import type { InvigilationDuty, TeacherDashboard as TeacherDashboardData } from '../components/portal/types'
 
 type TeacherTab = 'OVERVIEW' | 'ROUTINE' | 'INVIGILATION'
@@ -138,6 +139,13 @@ export default function TeacherDashboard() {
               )}
 
               <TodayClasses sessions={dashboard.todaysClasses} perspective="teacher" />
+
+              {/* Teaching load broken down against the contracted ceiling */}
+              <PortalAnalytics
+                sessions={dashboard.weekAhead}
+                contactHours={dashboard.contactHoursThisWeek}
+                maxWeeklyHours={maxHours}
+              />
             </div>
           )}
 

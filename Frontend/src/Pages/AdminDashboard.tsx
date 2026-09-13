@@ -10,6 +10,7 @@ import { UsersTable } from '../components/admin/UsersTable'
 import { AddUserModal } from '../components/admin/AddUserModal'
 import { ViewUserModal } from '../components/admin/ViewUserModal'
 import { CrudSection } from '../components/admin/crud/CrudSection'
+import { AnalyticsDashboard } from '../components/admin/AnalyticsDashboard'
 import { RoutineGenerator } from '../components/admin/routine/RoutineGenerator'
 import { ExamSeating } from '../components/admin/seating/ExamSeating'
 import { RESOURCES, type ResourceKey } from '../components/admin/resources'
@@ -37,7 +38,7 @@ export default function AdminDashboard() {
 
   // Layout and active section
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activeView, setActiveView] = useState<AdminView>('STUDENTS')
+  const [activeView, setActiveView] = useState<AdminView>('DASHBOARD')
 
   // Dashboard stats
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -249,7 +250,13 @@ export default function AdminDashboard() {
   }
 
   const label = viewLabel(activeView)
-  const isSpecialView = activeView === 'ROUTINE_GENERATOR' || activeView === 'EXAM_SEATING'
+  const isSpecialView =
+    activeView === 'DASHBOARD' ||
+    activeView === 'ROUTINE_GENERATOR' ||
+    activeView === 'EXAM_SEATING'
+
+  // The analytics view carries its own headline figures, so the shared cards would duplicate them
+  const showStatsCards = activeView !== 'DASHBOARD'
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5F7FA]">
@@ -268,25 +275,31 @@ export default function AdminDashboard() {
         <AdminTopbar
           title={isSpecialView ? label : `${label} Management`}
           subtitle={
-            activeView === 'ROUTINE_GENERATOR'
-              ? 'Build a clash-free timetable from the delivery pattern of each module'
-              : activeView === 'EXAM_SEATING'
-                ? 'Allocate halls and seat every candidate, desk by desk'
-                : `View and manage all ${label.toLowerCase()} records`
+            activeView === 'DASHBOARD'
+              ? 'How the estate, the timetable and the teaching load are actually performing'
+              : activeView === 'ROUTINE_GENERATOR'
+                ? 'Build a clash-free timetable from the delivery pattern of each module'
+                : activeView === 'EXAM_SEATING'
+                  ? 'Allocate halls and seat every candidate, desk by desk'
+                  : `View and manage all ${label.toLowerCase()} records`
           }
           addLabel={userTab ? tabLabel(userTab) : undefined}
           onAddClick={userTab ? openAddModal : undefined}
         />
 
         <div className="p-6">
-          <StatsCards
-            stats={stats}
-            loading={statsLoading}
-            activeTab={userTab ?? 'STUDENTS'}
-            onTabChange={setActiveView}
-          />
+          {showStatsCards && (
+            <StatsCards
+              stats={stats}
+              loading={statsLoading}
+              activeTab={userTab ?? 'STUDENTS'}
+              onTabChange={setActiveView}
+            />
+          )}
 
-          {activeView === 'ROUTINE_GENERATOR' ? (
+          {activeView === 'DASHBOARD' ? (
+            <AnalyticsDashboard />
+          ) : activeView === 'ROUTINE_GENERATOR' ? (
             <RoutineGenerator />
           ) : activeView === 'EXAM_SEATING' ? (
             <ExamSeating />

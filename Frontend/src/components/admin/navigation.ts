@@ -23,8 +23,8 @@ import {
 import type { ActiveTab } from './types'
 import type { ResourceKey } from './resources'
 
-// The routine generator is a bespoke screen rather than a CRUD table
-export type SpecialView = 'ROUTINE_GENERATOR' | 'EXAM_SEATING'
+// Bespoke screens rather than CRUD tables
+export type SpecialView = 'DASHBOARD' | 'ROUTINE_GENERATOR' | 'EXAM_SEATING'
 
 // Either a user-role tab, a generic CRUD resource, or a bespoke screen
 export type AdminView = ActiveTab | ResourceKey | SpecialView
@@ -43,6 +43,12 @@ export interface NavGroup {
 }
 
 export const NAV_GROUPS: NavGroup[] = [
+  {
+    heading: 'Overview',
+    items: [
+      { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
   {
     heading: 'User Management',
     items: [

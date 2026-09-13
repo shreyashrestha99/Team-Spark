@@ -15,6 +15,7 @@ import { PortalLayout, type PortalTab } from '../components/portal/PortalLayout'
 import { WeekRoutine } from '../components/portal/WeekRoutine'
 import { StatTile, TodayClasses } from '../components/portal/PortalWidgets'
 import { ExamSeatCard } from '../components/portal/ExamSeatCard'
+import { PortalAnalytics } from '../components/portal/PortalAnalytics'
 import type { MyExamSeat, StudentDashboard as StudentDashboardData } from '../components/portal/types'
 
 type StudentTab = 'OVERVIEW' | 'ROUTINE' | 'EXAMS'
@@ -132,6 +133,12 @@ export default function StudentDashboard() {
               )}
 
               <TodayClasses sessions={dashboard.todaysClasses} perspective="student" />
+
+              {/* How this student's own week is shaped */}
+              <PortalAnalytics
+                sessions={dashboard.weekAhead}
+                contactHours={dashboard.contactHoursThisWeek}
+              />
             </div>
           )}
 
