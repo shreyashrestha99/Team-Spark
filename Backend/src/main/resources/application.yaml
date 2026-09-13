@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/Team Spark
     username: postgres
-    password: kritika
+    password: admin123
     driver-class-name: org.postgresql.Driver
   jpa:
     open-in-view: false

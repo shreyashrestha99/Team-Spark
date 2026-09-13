@@ -1,4 +1,10 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive",
-    "java.debug.settings.onBuildFailureProceed": true
+    // Re-import the Maven classpath automatically when pom.xml or branches change.
+    // "interactive" waits for a prompt that is easy to miss, which leaves the
+    // language server compiling against a stale classpath.
+    "java.configuration.updateBuildConfiguration": "automatic",
+
+    // Never launch when the build failed. Launching anyway turns a compile error
+    // into a confusing runtime NoClassDefFoundError.
+    "java.debug.settings.onBuildFailureProceed": false
 }
