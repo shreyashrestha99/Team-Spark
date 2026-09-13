@@ -1,5 +1,5 @@
-import { ChevronLeft, LayoutDashboard, LogOut } from 'lucide-react'
-import { IslingtonLogo } from '../IslingtonLogo'
+import { ChevronLeft, GraduationCap, LogOut } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { initialsOf, type DashboardStats } from './types'
 import { NAV_GROUPS, type AdminView } from './navigation'
 
@@ -30,28 +30,34 @@ export function AdminSidebar({
         collapsed ? 'w-[72px]' : 'w-[260px]'
       }`}
     >
-      {/* Logo / brand */}
+      {/* Brand mark — compact so it fits the rail without crowding */}
       <div className="flex h-[72px] shrink-0 items-center border-b border-[#E2E8F0] px-4">
         {collapsed ? (
           <button
             onClick={() => onCollapsedChange(false)}
-            className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563EB] text-white cursor-pointer"
+            className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[#D92D20] text-white shadow-sm cursor-pointer"
             title="Expand sidebar"
           >
-            <LayoutDashboard className="h-5 w-5" />
+            <GraduationCap className="h-5 w-5" />
           </button>
         ) : (
-          <div className="flex w-full items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <IslingtonLogo size="sm" />
-              <div className="leading-tight">
-                <p className="text-sm font-bold text-[#0F172A]">RTE Admin</p>
-                <p className="text-[11px] text-[#94A3B8]">Dashboard</p>
-              </div>
-            </div>
+          <div className="flex w-full items-center justify-between gap-2">
+            <Link to="/" className="flex min-w-0 items-center gap-2.5 no-underline">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#D92D20] text-white shadow-sm">
+                <GraduationCap className="h-[18px] w-[18px]" />
+              </span>
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-[13.5px] font-bold tracking-tight text-[#0F172A]">
+                  Islington College
+                </span>
+                <span className="block truncate text-[11px] font-medium text-[#94A3B8]">
+                  RTE Department
+                </span>
+              </span>
+            </Link>
             <button
               onClick={() => onCollapsedChange(true)}
-              className="rounded-lg p-1.5 text-[#94A3B8] transition hover:bg-[#F1F5F9] hover:text-[#475569] cursor-pointer"
+              className="shrink-0 rounded-lg p-1.5 text-[#94A3B8] transition hover:bg-[#F1F5F9] hover:text-[#475569] cursor-pointer"
               title="Collapse sidebar"
             >
               <ChevronLeft className="h-4 w-4" />

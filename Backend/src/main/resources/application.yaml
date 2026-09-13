@@ -12,9 +12,9 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      # Schema is still changing, so every restart rebuilds it and DataInitializer reseeds.
-      # Switch back to "update" once the schema settles and seed data should survive restarts.
-      ddl-auto: create
+      # Schema has settled, so keep data across restarts instead of rebuilding every time.
+      # Use "create" only when an entity change needs the tables rebuilt from scratch.
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
